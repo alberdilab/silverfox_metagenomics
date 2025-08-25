@@ -1,6 +1,6 @@
 # Silverfox metagenomics
 
-Metagenomic analysis of Belyayev silverfoxes
+Metagenomic analysis of Belyayev silverfoxes for MSc project.
 
 ## Analysis procedures
 
