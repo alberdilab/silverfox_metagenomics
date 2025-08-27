@@ -2,3 +2,5 @@ introduction
 prepare-the-r-environment
 environment
 libraries
+data-preparation
+load-data
