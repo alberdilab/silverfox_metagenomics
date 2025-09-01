@@ -7,31 +7,17 @@ Load the original data files outputted by the bioinformatic pipeline.
 ### Sample metadata
 
 ```{r load_sample_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-#sample_metadata <- read_csv("data/sample_metadata.csv") %>% 
-#  mutate(location=factor(location,levels=c("Aruba","Brazil","CaboVerde","Spain","Denmark","Malaysia")),
-#         origin=factor(origin,levels=c("Domestic","Feral")))
-```
-
-### Genome metadata
-
-```{r load_genome_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-# genome_metadata <- read_csv("data/genome_metadata.csv") %>%
-#    mutate(phylum = case_when(
-# phylum == "Actinobacteriota" ~ "Actinomycetota",
-# phylum == "Firmicutes" ~ "Bacillota",
-# phylum == "Firmicutes_A" ~ "Bacillota_A",
-# phylum == "Firmicutes_C" ~ "Bacillota_C",
-# phylum == "Cyanobacteria" ~ "Cyanobacteriota",
-# phylum == "Proteobacteria" ~ "Pseudomonadota",
-# TRUE ~ phylum))
+sample_metadata <- read_csv("data/sample_metadata.csv") %>%
+  rename(sample =1)
 ```
 
 
-#### Reads
+#### Read counts
 
-```{r load_reads_gut, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_tsv("data/counts.tsv") %>%
-    rename(genome=1)
+    rename(genome=1) %>%
+    select(c("genome",sample_metadata$sample)) 
 ```
 
 
@@ -40,18 +26,19 @@ read_counts <- read_tsv("data/counts.tsv") %>%
 ```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_counts %>%
   filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
-  select_if(~!all(. == 0))  #%>%
-   # select(one_of(c("genome",sample_metadata$sample)))
+  select_if(~!all(. == 0))  %>%
+  select(one_of(c("genome",sample_metadata$sample)))
+
+head(read_counts)
 ```
 
 
 #### Genome taxonomy
 
 ```{r load_genome_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-# genome_metadata <- read_tsv("data/gut/DMB0156_mag_info.tsv.gz") %>%
-#     rename(length=mag_size)%>%
-#   semi_join(., read_counts, by = "genome") %>%
-#   arrange(match(genome,read_counts$genome))
+genome_metadata <- read_tsv("data/genomeInfo.csv") %>%
+   semi_join(., read_counts, by = "genome") %>%
+   arrange(match(genome,read_counts$genome))
 ```
 
 
