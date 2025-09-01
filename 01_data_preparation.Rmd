@@ -16,29 +16,43 @@ sample_metadata <- read_csv("data/sample_metadata.csv") %>%
 
 ```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_tsv("data/counts.tsv") %>%
-    rename(genome=1) %>%
-    select(c("genome",sample_metadata$sample)) 
+    rename(genome=1)
+
+    #%>%
+    #select(any_of(c("genome", sample_metadata$sample)))
+
+#colnames(read_counts)[which(!(colnames(read_counts) %in% sample_metadata$sample))]
+    
+  
 ```
 
 
 #### Filter read counts
 
-```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+```{r filter_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_counts %>%
   filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
-  select_if(~!all(. == 0))  %>%
-  select(one_of(c("genome",sample_metadata$sample)))
+  select_if(~!all(. == 0)) 
 
-head(read_counts)
+#%>%
+ # select(one_of(c("genome",sample_metadata$sample)))
+
 ```
 
 
 #### Genome taxonomy
 
-```{r load_genome_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-genome_metadata <- read_tsv("data/genomeInfo.csv") %>%
+```{r load_genome_info, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_info <- read_csv("data/genomeInfo.csv") %>%
+   mutate(genome = gsub(".fa$", "", genome)) %>%
    semi_join(., read_counts, by = "genome") %>%
    arrange(match(genome,read_counts$genome))
+```
+
+```{r load_genome_taxonomy, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv") 
+
+head(genome_taxonomy)
 ```
 
 
