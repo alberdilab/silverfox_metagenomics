@@ -4,3 +4,8 @@ environment
 libraries
 data-preparation
 load-data
+sample-metadata
+read-counts
+filter-read-counts
+genome-taxonomy
+genome-coverage

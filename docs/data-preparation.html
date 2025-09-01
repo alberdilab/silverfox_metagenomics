@@ -1991,7 +1991,10 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 </ul></li>
 <li class="chapter" data-level="2" data-path="data-preparation.html"><a href="data-preparation.html"><i class="fa fa-check"></i><b>2</b> Data preparation</a>
 <ul>
-<li class="chapter" data-level="2.1" data-path="data-preparation.html"><a href="data-preparation.html#load-data"><i class="fa fa-check"></i><b>2.1</b> Load data</a></li>
+<li class="chapter" data-level="2.1" data-path="data-preparation.html"><a href="data-preparation.html#load-data"><i class="fa fa-check"></i><b>2.1</b> Load data</a>
+<ul>
+<li class="chapter" data-level="2.1.1" data-path="data-preparation.html"><a href="data-preparation.html#sample-metadata"><i class="fa fa-check"></i><b>2.1.1</b> Sample metadata</a></li>
+</ul></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://www.alberdilab.dk" target="blank"><b>www.alberdilab.dk</b></a></li>
@@ -2020,7 +2023,44 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <div id="load-data" class="section level2 hasAnchor" number="2.1">
 <h2><span class="header-section-number">2.1</span> Load data<a href="data-preparation.html#load-data" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <p>Load the original data files outputted by the bioinformatic pipeline.</p>
+<div id="sample-metadata" class="section level3 hasAnchor" number="2.1.1">
+<h3><span class="header-section-number">2.1.1</span> Sample metadata<a href="data-preparation.html#sample-metadata" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb3-1"><a href="data-preparation.html#cb3-1" tabindex="-1"></a>sample_metadata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;data/sample_metadata.csv&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb3-2"><a href="data-preparation.html#cb3-2" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">sample =</span><span class="dv">1</span>)</span></code></pre></div>
+<div id="read-counts" class="section level4 hasAnchor" number="2.1.1.1">
+<h4><span class="header-section-number">2.1.1.1</span> Read counts<a href="data-preparation.html#read-counts" class="anchor-section" aria-label="Anchor link to header"></a></h4>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb4-1"><a href="data-preparation.html#cb4-1" tabindex="-1"></a>read_counts <span class="ot">&lt;-</span> <span class="fu">read_tsv</span>(<span class="st">&quot;data/counts.tsv&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-2"><a href="data-preparation.html#cb4-2" tabindex="-1"></a>    <span class="fu">rename</span>(<span class="at">genome=</span><span class="dv">1</span>)</span>
+<span id="cb4-3"><a href="data-preparation.html#cb4-3" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="data-preparation.html#cb4-4" tabindex="-1"></a>    <span class="co">#%&gt;%</span></span>
+<span id="cb4-5"><a href="data-preparation.html#cb4-5" tabindex="-1"></a>    <span class="co">#select(any_of(c(&quot;genome&quot;, sample_metadata$sample)))</span></span>
+<span id="cb4-6"><a href="data-preparation.html#cb4-6" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="data-preparation.html#cb4-7" tabindex="-1"></a><span class="co">#colnames(read_counts)[which(!(colnames(read_counts) %in% sample_metadata$sample))]</span></span></code></pre></div>
+</div>
+<div id="filter-read-counts" class="section level4 hasAnchor" number="2.1.1.2">
+<h4><span class="header-section-number">2.1.1.2</span> Filter read counts<a href="data-preparation.html#filter-read-counts" class="anchor-section" aria-label="Anchor link to header"></a></h4>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb5-1"><a href="data-preparation.html#cb5-1" tabindex="-1"></a>read_counts <span class="ot">&lt;-</span> read_counts <span class="sc">%&gt;%</span></span>
+<span id="cb5-2"><a href="data-preparation.html#cb5-2" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">rowSums</span>(. <span class="sc">!=</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-3"><a href="data-preparation.html#cb5-3" tabindex="-1"></a>  <span class="fu">select_if</span>(<span class="sc">~!</span><span class="fu">all</span>(. <span class="sc">==</span> <span class="dv">0</span>)) </span>
+<span id="cb5-4"><a href="data-preparation.html#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="data-preparation.html#cb5-5" tabindex="-1"></a><span class="co">#%&gt;%</span></span>
+<span id="cb5-6"><a href="data-preparation.html#cb5-6" tabindex="-1"></a> <span class="co"># select(one_of(c(&quot;genome&quot;,sample_metadata$sample)))</span></span></code></pre></div>
+</div>
+<div id="genome-taxonomy" class="section level4 hasAnchor" number="2.1.1.3">
+<h4><span class="header-section-number">2.1.1.3</span> Genome taxonomy<a href="data-preparation.html#genome-taxonomy" class="anchor-section" aria-label="Anchor link to header"></a></h4>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb6-1"><a href="data-preparation.html#cb6-1" tabindex="-1"></a>genome_info <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;data/genomeInfo.csv&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="data-preparation.html#cb6-2" tabindex="-1"></a>   <span class="fu">mutate</span>(<span class="at">genome =</span> <span class="fu">gsub</span>(<span class="st">&quot;.fa$&quot;</span>, <span class="st">&quot;&quot;</span>, genome)) <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="data-preparation.html#cb6-3" tabindex="-1"></a>   <span class="fu">semi_join</span>(., read_counts, <span class="at">by =</span> <span class="st">&quot;genome&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-4"><a href="data-preparation.html#cb6-4" tabindex="-1"></a>   <span class="fu">arrange</span>(<span class="fu">match</span>(genome,read_counts<span class="sc">$</span>genome))</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb7-1"><a href="data-preparation.html#cb7-1" tabindex="-1"></a>genome_taxonomy <span class="ot">&lt;-</span> <span class="fu">read_tsv</span>(<span class="st">&quot;data/genome_taxonomy.tsv&quot;</span>) </span>
+<span id="cb7-2"><a href="data-preparation.html#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="data-preparation.html#cb7-3" tabindex="-1"></a><span class="fu">head</span>(genome_taxonomy)</span></code></pre></div>
+</div>
+<div id="genome-coverage" class="section level4 hasAnchor" number="2.1.1.4">
+<h4><span class="header-section-number">2.1.1.4</span> Genome coverage<a href="data-preparation.html#genome-coverage" class="anchor-section" aria-label="Anchor link to header"></a></h4>
 
+</div>
+</div>
 </div>
 </div>
 
