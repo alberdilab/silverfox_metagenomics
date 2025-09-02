@@ -12,7 +12,7 @@ sample_metadata <- read_csv("data/sample_metadata.csv") %>%
 ```
 
 
-#### Read counts
+### Read counts
 
 ```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_tsv("data/counts.tsv") %>%
@@ -27,7 +27,7 @@ read_counts <- read_tsv("data/counts.tsv") %>%
 ```
 
 
-#### Filter read counts
+### Filter read counts
 
 ```{r filter_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_counts %>%
@@ -40,7 +40,7 @@ read_counts <- read_counts %>%
 ```
 
 
-#### Genome taxonomy
+### Genome info
 
 ```{r load_genome_info, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 genome_info <- read_csv("data/genomeInfo.csv") %>%
@@ -49,16 +49,129 @@ genome_info <- read_csv("data/genomeInfo.csv") %>%
    arrange(match(genome,read_counts$genome))
 ```
 
-```{r load_genome_taxonomy, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv") 
+### Genome taxonomy
 
-head(genome_taxonomy)
+```{r load_genome_taxonomy, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv") %>%
+  rename(genome = 1)
+
+genome_taxonomy_expanded <- genome_taxonomy %>% 
+  separate(classification,
+           into = c("domain", "phylum", "class", "order", "family", "genus", "species"),
+           sep = ";",
+           fill = "right", remove = FALSE) %>%
+  mutate(across(domain:species, ~ str_replace(.x, "^[a-z]__", "")))%>%
+  mutate(phylum = case_when(
+    phylum == "Actinobacteriota" ~ "Actinomycetota",
+    phylum == "Firmicutes" ~ "Bacillota",
+    phylum == "Firmicutes_A" ~ "Bacillota_A",
+    phylum == "Firmicutes_C" ~ "Bacillota_C",
+    phylum == "Cyanobacteria" ~ "Cyanobacteriota",
+    phylum == "Proteobacteria" ~ "Pseudomonadota",
+    TRUE ~ phylum))
+```
+
+### Genome metadata
+```{r load_genome_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_metadata <- genome_taxonomy_expanded %>%
+  left_join(genome_info, by = "genome")
 ```
 
 
-#### Genome coverage
+### Genome coverage
+
+```{r load_bases, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_coverage <- read_tsv("data/bases.tsv") %>%
+    rename(genome=1) %>%
+    left_join(genome_info %>% select(genome, length), by = "genome") %>%
+    mutate(across(where(is.numeric), ~ .x / length))
+```
 
 
+### Genome tree
+
+```{r load_genome_tree, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_tree <- read_tree("data/gtdbtk.backbone.bac120.classify.tree")
+genome_tree$tip.label <- str_replace_all(genome_tree$tip.label,"'", "") #remove single quotes in MAG names
+genome_tree <- keep.tip(genome_tree, tip=genome_metadata$genome) # keep only MAG tips
+```
+### Genome annotations
+
+```{r load_gene_annotations, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_annotations <- read_tsv("data/gene_annotations.tsv.xz") %>%
+  mutate(genome = sub("\\^.*", "", gene)) %>%
+  select(1, genome, everything())
+```
+
+## Create working objects
+
+Transform the original data files into working objects for downstream analyses.
+
+### Filter reads by coverage
+
+```{r filter_coverage, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+min_coverage=0.3
+read_counts_filt <- genome_coverage %>%
+  select(-length) %>% 
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>%
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) 
+```
 
 
+### Transform reads into genome counts
+
+```{r calculate_genome_counts_unfiltered, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+readlength=150
+genome_counts <- read_counts %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength) ))
+```
+
+```{r calculate_genome_counts_filtered, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+readlength=150
+genome_counts_filt <- read_counts_filt %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength) ))
+```
+
+### Distill annotations into GIFTs 
+
+```{r distill_annotations, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_gifts <- distill(genome_annotations,GIFT_db,genomecol= 2, annotcol=c(6,7,8,9), verbosity = F)
+```
+
+## Prepare color scheme
+
+[AlberdiLab](www.alberdilab.dk) projects use unified color schemes developed for the [Earth Hologenome Initiative](www.earthhologenome.org), to facilitate figure interpretation.
+
+```{r get_ehi_colors, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    mutate(phylum=str_remove_all(phylum, "p__")) %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    dplyr::select(phylum, colors) %>% 
+    unique() %>%
+    arrange(phylum) %>%
+    pull(colors, name=phylum)
+
+location_colors <- c('#3D5C61','#41B6C0','#90C8C5','#E5D388','#BFA366','#6E5244')
+
+origin_colors <- c("#bd70ae","#949293")
+```
+
+## Wrap working objects
+
+All working objects are wrapped into a single Rdata object to facilitate downstream usage.
+
+```{r wrap_working_objects, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+save(sample_metadata, 
+     genome_metadata, 
+     read_counts, 
+     genome_counts, 
+     genome_counts_filt, 
+     genome_tree,
+     genome_gifts, 
+     phylum_colors,
+     location_colors,
+     origin_colors,
+     file = "data/data.Rdata")
+```
 
