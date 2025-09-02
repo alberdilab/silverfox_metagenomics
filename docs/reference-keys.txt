@@ -19,3 +19,4 @@ transform-reads-into-genome-counts
 distill-annotations-into-gifts
 prepare-color-scheme
 wrap-working-objects
+mag-catalogue
