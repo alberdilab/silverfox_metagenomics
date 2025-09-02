@@ -8,7 +8,12 @@ Load the original data files outputted by the bioinformatic pipeline.
 
 ```{r load_sample_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 sample_metadata <- read_csv("data/sample_metadata.csv") %>%
-  rename(sample =1)
+  rename(sample =1, 
+         gut_location = 2,
+         fox_behaviour = 3, 
+         fox_sex = 4,
+         sample_type = 5, 
+         year = 6)
 ```
 
 
