@@ -60,6 +60,25 @@ k_ileum_heatmap <- genome_counts_filt  %>%
   summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
   column_to_rownames(var="genome")
 
+# Generate Gut content heatmap
+gut_content_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(sample_type =="Gut content") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+
+# Generate Gut tissue heatmap
+gut_tissue_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(sample_type =="Gut tissue") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
 # Generate tame heatmap
 tame_heatmap <- genome_counts_filt  %>%
   pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
@@ -92,7 +111,7 @@ circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0, width=0.05, c
 
 # Add F_colon ring
 circular_tree <- gheatmap(circular_tree, f_colon_heatmap, offset=0.2, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#3D5C61")) +
+        scale_fill_manual(values = c("absent" = "#ffffff", "present" = "#3D5C61")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
@@ -110,9 +129,22 @@ circular_tree <- gheatmap(circular_tree, d_ileum_heatmap, offset=0.4, width=0.05
 
 # Add K_ileum ring
 circular_tree <- gheatmap(circular_tree, k_ileum_heatmap, offset=0.5, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#E5D388")) +
+        scale_fill_manual(values=c("absent" =  "#ffffff", "present" = "#E5D388")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
+
+# Add Gut content ring
+circular_tree <- gheatmap(circular_tree, gut_content_heatmap, offset=0.7, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("absent" ="#ffffff","present" = "#BFA366")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add Gut tissue ring
+circular_tree <- gheatmap(circular_tree, gut_tissue_heatmap, offset=0.8, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#6E5244")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
 
 
 # Add prevalence ring
@@ -123,7 +155,7 @@ circular_tree <-  circular_tree +
              data=prevalence_data,
              geom=geom_bar,
              mapping = aes(x=prevalence, y=genome),
-                 offset = 0.4,
+                 offset = 0.5,
                  orientation="y",
          stat="identity")
 
