@@ -20,3 +20,6 @@ distill-annotations-into-gifts
 prepare-color-scheme
 wrap-working-objects
 mag-catalogue
+genome-phylogeny
+functional-overview
+functional-ordination
