@@ -318,3 +318,24 @@ function_ordination <- tSNE_function$Y %>%
 function_ordination
 ```
 
+```{r pcoa, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+dist_matrix <- vegdist(function_table, method = "bray")
+pcoa_res <- ape::pcoa(dist_matrix)
+
+function_ordination2 <- pcoa_res$vectors[,1:2] %>%
+  as.data.frame() %>%
+  mutate(genome = rownames(function_table)) %>%
+  inner_join(genome_metadata, by="genome") %>%
+  rename(PCoA1 = Axis.1, PCoA2 = Axis.2) %>%
+  dplyr::select(genome, phylum, PCoA1, PCoA2, length) %>%
+  ggplot(aes(x = PCoA1, y = PCoA2, color = phylum, size = length)) +
+    geom_point(shape=16, alpha=0.7) +
+    scale_color_manual(values=phylum_colors) +
+    theme_minimal() +
+    labs(color="Phylum", size="Genome size") +
+    guides(color = guide_legend(override.aes = list(size = 5))) # enlarge Phylum dots in legend
+
+function_ordination2
+
+```
+
