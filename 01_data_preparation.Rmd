@@ -30,7 +30,7 @@ read_counts <- read_tsv("data/counts.tsv") %>%
 ### Filter read counts
 
 ```{r filter_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
-read_counts <- read_counts %>%
+read_counts_filt <- read_counts %>%
   filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
   select_if(~!all(. == 0)) %>%
   select(one_of(c("genome",sample_metadata$sample)))
