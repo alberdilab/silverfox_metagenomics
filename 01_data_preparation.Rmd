@@ -81,6 +81,7 @@ genome_metadata <- genome_taxonomy_expanded %>%
 ```{r load_bases, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 genome_coverage <- read_tsv("data/bases.tsv") %>%
     rename(genome=1) %>%
+    select(one_of(c("genome",sample_metadata$sample))) %>%
     left_join(genome_info %>% select(genome, length), by = "genome") %>%
     mutate(across(where(is.numeric), ~ .x / length))
 ```
