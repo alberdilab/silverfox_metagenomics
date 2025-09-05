@@ -30,7 +30,7 @@
   
   
 <link rel="prev" href="data-preparation.html"/>
-
+<link rel="next" href="community-composition.html"/>
 
 
 
@@ -2023,6 +2023,17 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <li class="chapter" data-level="3.3" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-overview"><i class="fa fa-check"></i><b>3.3</b> Functional overview</a></li>
 <li class="chapter" data-level="3.4" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-ordination"><i class="fa fa-check"></i><b>3.4</b> Functional ordination</a></li>
 </ul></li>
+<li class="chapter" data-level="4" data-path="community-composition.html"><a href="community-composition.html"><i class="fa fa-check"></i><b>4</b> Community composition</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="community-composition.html"><a href="community-composition.html#taxonomy-overview-1"><i class="fa fa-check"></i><b>4.1</b> Taxonomy overview</a>
+<ul>
+<li class="chapter" data-level="4.1.1" data-path="community-composition.html"><a href="community-composition.html#stacked-barplot"><i class="fa fa-check"></i><b>4.1.1</b> Stacked barplot</a></li>
+<li class="chapter" data-level="4.1.2" data-path="community-composition.html"><a href="community-composition.html#phylum-relative-abundances"><i class="fa fa-check"></i><b>4.1.2</b> Phylum relative abundances</a></li>
+<li class="chapter" data-level="4.1.3" data-path="community-composition.html"><a href="community-composition.html#family"><i class="fa fa-check"></i><b>4.1.3</b> Family</a></li>
+<li class="chapter" data-level="4.1.4" data-path="community-composition.html"><a href="community-composition.html#genus"><i class="fa fa-check"></i><b>4.1.4</b> Genus</a></li>
+</ul></li>
+<li class="chapter" data-level="4.2" data-path="community-composition.html"><a href="community-composition.html#core-microbiota"><i class="fa fa-check"></i><b>4.2</b> Core microbiota</a></li>
+</ul></li>
 <li class="divider"></li>
 <li><a href="https://www.alberdilab.dk" target="blank"><b>www.alberdilab.dk</b></a></li>
 <li><a href="https://www.earthhologenome.org" target="blank"><b>www.earthhologenome.org</b></a></li>
@@ -2309,8 +2320,8 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 
     <script>
 
-      function styleCell_zb1y9e2xmmivd6i2mt16(i, j, css_id) {
-          var table = document.getElementById("tinytable_zb1y9e2xmmivd6i2mt16");
+      function styleCell_hol22ntxdcv2ntrbth35(i, j, css_id) {
+          var table = document.getElementById("tinytable_hol22ntxdcv2ntrbth35");
           var cell = table.querySelector(`[data-row="${i}"][data-col="${j}"]`);
           if (cell) {
               console.log(`Styling cell at (${i}, ${j}) with class ${css_id}`);
@@ -2319,8 +2330,8 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
               console.warn(`Cell at (${i}, ${j}) not found.`);
           }
       }
-      function spanCell_zb1y9e2xmmivd6i2mt16(i, j, rowspan, colspan) {
-        var table = document.getElementById("tinytable_zb1y9e2xmmivd6i2mt16");
+      function spanCell_hol22ntxdcv2ntrbth35(i, j, rowspan, colspan) {
+        var table = document.getElementById("tinytable_hol22ntxdcv2ntrbth35");
         const targetCell = table.querySelector(`[data-row="${i}"][data-col="${j}"]`);
         if (!targetCell) {
           console.warn(`Cell at (${i}, ${j}) not found.`);
@@ -2351,14 +2362,14 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
       window.addEventListener('load', function () {
           var cellsToStyle = [
             // tinytable style arrays after
-          { positions: [ { i: '13', j: 0 }, { i: '13', j: 1 }, { i: '13', j: 2 },  ], css_id: 'tinytable_css_y2b2rn1tpfurxibq544q',}, 
-          { positions: [ { i: '0', j: 0 }, { i: '0', j: 1 }, { i: '0', j: 2 },  ], css_id: 'tinytable_css_egyx7mkbkqx2nmtsxex0',}, 
+          { positions: [ { i: '13', j: 0 }, { i: '13', j: 1 }, { i: '13', j: 2 },  ], css_id: 'tinytable_css_27dadx2uvxoppwowy7lj',}, 
+          { positions: [ { i: '0', j: 0 }, { i: '0', j: 1 }, { i: '0', j: 2 },  ], css_id: 'tinytable_css_e82xpmmic38cyqjkys4w',}, 
           ];
 
           // Loop over the arrays to style the cells
           cellsToStyle.forEach(function (group) {
               group.positions.forEach(function (cell) {
-                  styleCell_zb1y9e2xmmivd6i2mt16(cell.i, cell.j, group.css_id);
+                  styleCell_hol22ntxdcv2ntrbth35(cell.i, cell.j, group.css_id);
               });
           });
       });
@@ -2366,11 +2377,11 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 
     <style>
 
-.table td.tinytable_css_y2b2rn1tpfurxibq544q, .table th.tinytable_css_y2b2rn1tpfurxibq544q { border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_egyx7mkbkqx2nmtsxex0, .table th.tinytable_css_egyx7mkbkqx2nmtsxex0 { border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_27dadx2uvxoppwowy7lj, .table th.tinytable_css_27dadx2uvxoppwowy7lj { border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_e82xpmmic38cyqjkys4w, .table th.tinytable_css_e82xpmmic38cyqjkys4w { border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
 </style>
     <div class="container">
-      <table class="table table-borderless" id="tinytable_zb1y9e2xmmivd6i2mt16" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+      <table class="table table-borderless" id="tinytable_hol22ntxdcv2ntrbth35" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
         <thead>
         
               <tr>
@@ -2479,8 +2490,8 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 
     <script>
 
-      function styleCell_euanfpk3d2w85ekcmmlb(i, j, css_id) {
-          var table = document.getElementById("tinytable_euanfpk3d2w85ekcmmlb");
+      function styleCell_mt6p5wwcxs1gcc56o0tq(i, j, css_id) {
+          var table = document.getElementById("tinytable_mt6p5wwcxs1gcc56o0tq");
           var cell = table.querySelector(`[data-row="${i}"][data-col="${j}"]`);
           if (cell) {
               console.log(`Styling cell at (${i}, ${j}) with class ${css_id}`);
@@ -2489,8 +2500,8 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
               console.warn(`Cell at (${i}, ${j}) not found.`);
           }
       }
-      function spanCell_euanfpk3d2w85ekcmmlb(i, j, rowspan, colspan) {
-        var table = document.getElementById("tinytable_euanfpk3d2w85ekcmmlb");
+      function spanCell_mt6p5wwcxs1gcc56o0tq(i, j, rowspan, colspan) {
+        var table = document.getElementById("tinytable_mt6p5wwcxs1gcc56o0tq");
         const targetCell = table.querySelector(`[data-row="${i}"][data-col="${j}"]`);
         if (!targetCell) {
           console.warn(`Cell at (${i}, ${j}) not found.`);
@@ -2521,14 +2532,14 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
       window.addEventListener('load', function () {
           var cellsToStyle = [
             // tinytable style arrays after
-          { positions: [ { i: '1', j: 0 }, { i: '1', j: 1 },  ], css_id: 'tinytable_css_juz3aj0594cl1i4wra6a',}, 
-          { positions: [ { i: '0', j: 0 }, { i: '0', j: 1 },  ], css_id: 'tinytable_css_b4tjprpuhv6vkw9ivqti',}, 
+          { positions: [ { i: '1', j: 0 }, { i: '1', j: 1 },  ], css_id: 'tinytable_css_0rxjmmxup5bmnhwdftjo',}, 
+          { positions: [ { i: '0', j: 0 }, { i: '0', j: 1 },  ], css_id: 'tinytable_css_bolh6bhklbltld2werf6',}, 
           ];
 
           // Loop over the arrays to style the cells
           cellsToStyle.forEach(function (group) {
               group.positions.forEach(function (cell) {
-                  styleCell_euanfpk3d2w85ekcmmlb(cell.i, cell.j, group.css_id);
+                  styleCell_mt6p5wwcxs1gcc56o0tq(cell.i, cell.j, group.css_id);
               });
           });
       });
@@ -2536,11 +2547,11 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 
     <style>
 
-.table td.tinytable_css_juz3aj0594cl1i4wra6a, .table th.tinytable_css_juz3aj0594cl1i4wra6a { border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_b4tjprpuhv6vkw9ivqti, .table th.tinytable_css_b4tjprpuhv6vkw9ivqti { border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_0rxjmmxup5bmnhwdftjo, .table th.tinytable_css_0rxjmmxup5bmnhwdftjo { border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_bolh6bhklbltld2werf6, .table th.tinytable_css_bolh6bhklbltld2werf6 { border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
 </style>
     <div class="container">
-      <table class="table table-borderless" id="tinytable_euanfpk3d2w85ekcmmlb" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+      <table class="table table-borderless" id="tinytable_mt6p5wwcxs1gcc56o0tq" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
         <thead>
         
               <tr>
@@ -2927,19 +2938,13 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 
 </div>
 </div>
-
-
-
-
-
-
             </section>
 
           </div>
         </div>
       </div>
-<a href="data-preparation.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-
+<a href="data-preparation.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="community-composition.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script>/*! jQuery v3.6.0 | (c) OpenJS Foundation and other contributors | jquery.org/license */

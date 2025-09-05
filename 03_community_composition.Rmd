@@ -194,7 +194,7 @@ phylum_summary %>%
         labs(y="Phylum",x="Relative abundance")
 ```
 
-```{r taxonomy_boxplot_phylum_behaviour, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+```{r taxonomy_phylum_plot, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
 phylum_summary %>%
   filter(phylum %in% phylum_arrange) %>%
   mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
@@ -205,19 +205,272 @@ phylum_summary %>%
         scale_fill_manual(values=phylum_colors[-8]) +
         geom_boxplot(alpha=0.2)+
         geom_jitter(alpha=0.5) + 
-        facet_nested(. ~ fox_behaviour)+ 
         theme_minimal() + 
-        theme(legend.position="none",
-              strip.text.x = element_text(size = 14, color="black",face="bold"),
-              axis.text.x = element_text(vjust = 0.5, size = 10),
-              axis.text.y = element_text(size = 12),
-              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
-              axis.title = element_text(size = 14, face = "bold"),
-              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-              ) +
+        theme(legend.position="none") +
         labs(y="Phylum",x="Relative abundance")
+```
+
+### Family
+
+```{r family_all, comment="", echo=FALSE}
+family_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS normalization
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  left_join(genome_metadata, by = join_by(genome == genome)) %>%
+  group_by(sample,family,fox_behaviour) %>%
+  summarise(relabun=sum(count))
+
+family_arrange <- family_summary %>%
+    group_by(family) %>%
+    summarise(mean=sum(relabun)) %>%
+    arrange(-mean) %>%
+    dplyr::select(family) %>%
+    pull()
+
+family_summary %>%
+    group_by(family) %>%
+    summarise(total_mean=mean(relabun*100, na.rm=T),
+              total_sd=sd(relabun*100, na.rm=T),
+              tame_mean=mean(relabun[fox_behaviour=="tame"]*100, na.rm=T),
+              tame_sd=sd(relabun[fox_behaviour=="tame"]*100, na.rm=T),
+              aggr_mean=mean(relabun[fox_behaviour=="aggr"]*100, na.rm=T),
+              aggr_sd=sd(relabun[fox_behaviour=="aggr"]*100, na.rm=T)) %>%
+    mutate(total=str_c(round(total_mean,2),"±",round(total_sd,2)),
+           tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
+           aggr=str_c(round(aggr_mean,2),"±",round(aggr_sd,2))) %>% 
+    arrange(-total_mean) %>% 
+    select(family,total,tame,aggr) %>% 
+    tt()
 ```
 
 
 
+```{r taxonomy_jitterplot_family_location, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+family_summary %>%
+  left_join(genome_metadata %>% dplyr::select(family,phylum) %>% unique(),by=join_by(family==family)) %>%
+  left_join(sample_metadata,by=join_by(sample==sample)) %>%
+  filter(family %in% family_arrange[1:20]) %>%
+  mutate(family=factor(family,levels=rev(family_arrange[1:20]))) %>%
+  filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=family, group=family, color=phylum, fill=phylum)) +
+      scale_color_manual(values=phylum_colors[-8]) +
+      scale_fill_manual(values=phylum_colors[-8]) +
+      geom_boxplot(alpha=0.2)+
+      geom_jitter(alpha=0.5) + 
+      facet_grid(.~gut_location)+
+      theme_minimal() +
+      theme(legend.position="none",
+                  strip.text.x = element_text(size = 14, color="black",face="bold"),
+                  axis.text.x = element_text(vjust = 0.5, size = 6),
+                  axis.text.y = element_text(size = 12),
+                  axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+                  axis.title = element_text(size = 14, face = "bold"),
+                  axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+                  axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0)))+
+      labs(y="Family", x="Relative abundance", color="Phylum")
+```
+
+```{r taxonomy_jitterplot_family_origin, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+family_summary %>%
+    left_join(genome_metadata %>% dplyr::select(family,phylum) %>% unique(),by=join_by(family==family)) %>%
+    left_join(sample_metadata,by=join_by(sample==sample)) %>%
+    filter(family %in% family_arrange[1:20]) %>%
+    mutate(family=factor(family,levels=rev(family_arrange[1:20]))) %>%
+    filter(relabun > 0) %>%
+    ggplot(aes(x=relabun, y=family, group=family, color=phylum, fill=phylum)) +
+        scale_color_manual(values=phylum_colors[-8]) +
+        scale_fill_manual(values=phylum_colors[-8]) +
+        geom_boxplot(alpha=0.2)+
+        geom_jitter(alpha=0.5) + 
+        facet_grid(.~gut_location)+
+        theme_minimal() +
+        theme(legend.position="none",
+                    strip.text.x = element_text(size = 14, color="black",face="bold"),
+                    axis.text.x = element_text(vjust = 0.5, size = 6),
+                    axis.text.y = element_text(size = 12),
+                    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+                    axis.title = element_text(size = 14, face = "bold"),
+                    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+                    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0)))+
+        labs(y="Family", x="Relative abundance", color="Phylum")
+```
+
+### Genus
+
+```{r genus_all, comment="", echo=FALSE}
+genus_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  left_join(genome_metadata, by = join_by(genome == genome)) %>%
+  group_by(sample,genus,fox_behaviour) %>%
+  summarise(relabun=sum(count))
+
+genus_arrange <- genus_summary %>%
+    group_by(genus) %>%
+    summarise(mean=sum(relabun)) %>%
+    filter(genus != "g__")%>%
+    arrange(-mean) %>%
+    dplyr::select(genus) %>%
+    mutate(genus= sub("^g__", "", genus)) %>%
+    pull()
+
+genus_summary %>%
+    group_by(genus) %>%
+    summarise(total_mean=mean(relabun*100, na.rm=T),
+              total_sd=sd(relabun*100, na.rm=T),
+              tame_mean=mean(relabun[fox_behaviour=="tame"]*100, na.rm=T),
+              tame_sd=sd(relabun[fox_behaviour=="tame"]*100, na.rm=T),
+              aggr_mean=mean(relabun[fox_behaviour=="aggr"]*100, na.rm=T),
+              aggr_sd=sd(relabun[fox_behaviour=="aggr"]*100, na.rm=T)) %>%
+    mutate(total=str_c(round(total_mean,2),"±",round(total_sd,2)),
+           tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
+           aggr=str_c(round(aggr_mean,2),"±",round(aggr_sd,2))) %>% 
+    arrange(-total_mean) %>% 
+    select(genus,total,tame,aggr) %>% 
+    tt()
+```
+
+```{r taxonomy_jitterplot_genus_location, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+genus_summary %>%
+  left_join(genome_metadata %>% dplyr::select(genus,phylum) %>% unique(),by="genus") %>%
+  left_join(sample_metadata,by=join_by(sample==sample)) %>%
+  filter(genus %in% genus_arrange[1:20]) %>%
+  mutate(genus=factor(genus,levels=rev(genus_arrange[1:20]))) %>%
+  filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=genus, group=genus, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[-8]) +
+  scale_fill_manual(values=phylum_colors[-8]) +
+  geom_boxplot(alpha=0.2)+
+  geom_jitter(alpha=0.5) + 
+  facet_grid(.~ gut_location)+
+  theme_minimal() +
+  theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 6),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0)))+
+  labs(y="Family", x="Relative abundance", color="Phylum")
+```
+
+```{r taxonomy_jitterplot_genus_origin, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+genus_summary %>%
+  left_join(genome_metadata %>% dplyr::select(genus,phylum) %>% unique(),by="genus") %>%
+  filter(genus %in% genus_arrange[1:20]) %>%
+  mutate(genus=factor(genus,levels=rev(genus_arrange[1:20]))) %>%
+  filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=genus, group=genus, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[-8]) +
+  scale_fill_manual(values=phylum_colors[-8]) +
+  geom_boxplot(alpha=0.2)+
+  geom_jitter(alpha=0.5) + 
+  facet_grid(.~fox_behaviour)+
+  theme_minimal() +
+  theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 6),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0)))+
+  labs(y="Family", x="Relative abundance", color="Phylum")
+```
+
+## Core microbiota
+
+```{r core_mag_upset, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+library(UpSetR)
+
+#Presence/absence
+genome_counts_rel_pa <- (genome_counts_rel > 0) * 1
+
+#Add gut_location info
+df <- as.data.frame(t(genome_counts_rel_pa)) %>%
+  rownames_to_column("sample") %>%
+  left_join(sample_metadata, by="sample") 
+
+#Summarize by location
+table_upset_analysis <- df %>%
+  group_by(gut_location) %>%
+  summarise(across(-sample, ~ as.integer(any(. > 0)))) %>%
+  column_to_rownames("gut_location") %>%
+  t() %>%
+  as.data.frame()
+
+#UpSet plot
+upset(table_upset_analysis,
+      keep.order = TRUE,
+      sets = rev(c("F_colon", "M_colon", "D_ileum", "K_ileum")),
+      sets.bar.color = rev(location_colors[1:4]),
+      mb.ratio = c(0.55, 0.45),
+      order.by = "freq")
+
+```
+
+```{r core_mag_origin, warning=FALSE, comments="", message=FALSE}
+mag_prevalence_location <- genome_counts_filt  %>%
+  mutate_at(vars(-genome),~./sum(.)) %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  mutate(presence=ifelse(abundance>0,1,0)) %>% 
+  select(genome,sample,presence,gut_location, sample_type) %>%
+  group_by(genome,gut_location, sample_type) %>%
+  summarise(presence=ifelse(sum(presence)>0,1,0)) %>% 
+  group_by(genome,sample_type) %>%
+  summarise(presence=sum(presence))
+
+mag_prevalence_location %>% 
+  group_by(sample_type) %>%
+  summarise(mean=mean(presence),sd=sd(presence)) %>%
+  tt()
+
+wilcox.test(presence ~ sample_type, data=mag_prevalence_location)  %>%
+  tidy()
+```
+
+```{r core_mag_origin_boxplot, warning=FALSE, comments="", message=FALSE}
+mag_prevalence_location %>% 
+  ggplot(aes(x=sample_type,y=presence, color=sample_type, fill=sample_type)) +
+    geom_boxplot() +
+    geom_jitter() +
+    scale_color_manual(values=origin_colors) +
+    scale_fill_manual(values=str_c(origin_colors,"50")) +
+    theme_minimal()
+```
+
+```{r core_mag_fox_behaviour, warning=FALSE, comments="", message=FALSE}
+mag_prevalence_location <- genome_counts_filt  %>%
+  mutate_at(vars(-genome),~./sum(.)) %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(!grepl("unsel", fox_behaviour))%>% #to remove the rows with "unsel"
+  mutate(presence=ifelse(abundance>0,1,0)) %>% 
+  select(genome,sample,presence,gut_location, fox_behaviour) %>%
+  group_by(genome,gut_location, fox_behaviour) %>%
+  summarise(presence=ifelse(sum(presence)>0,1,0)) %>% 
+  group_by(genome,fox_behaviour) %>%
+  summarise(presence=sum(presence))
+
+mag_prevalence_location %>% 
+  group_by(fox_behaviour) %>%
+  summarise(mean=mean(presence),sd=sd(presence)) %>%
+  tt()
+
+wilcox.test(presence ~ fox_behaviour, data=mag_prevalence_location)  %>%
+  tidy()
+```
+
+```{r core_mag_behaviour_boxplot, warning=FALSE, comments="", message=FALSE}
+mag_prevalence_location %>% 
+  ggplot(aes(x=fox_behaviour,y=presence, color=fox_behaviour, fill=fox_behaviour)) +
+    geom_boxplot() +
+    geom_jitter() +
+    scale_color_manual(values=origin_colors) +
+    scale_fill_manual(values=str_c(origin_colors,"50")) +
+    theme_minimal()
+```
