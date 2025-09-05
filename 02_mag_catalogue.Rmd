@@ -605,12 +605,14 @@ for (nn in neighbors_values) {
            color="Phylum", size="Genome size") +
       guides(color = guide_legend(override.aes = list(size = 5)))
     
+    p <- p + theme(legend.position = "none")
     umap_plots[[paste(nn, md, sep="_")]] <- p
+    
   }
 }
+ggpubr::ggarrange(plotlist = umap_plots, ncol = 3, nrow = 3)
 
-# Combine into one grid
-wrap_plots(umap_plots)
+
 ```
 
 
@@ -644,7 +646,7 @@ function_ordination
 set.seed(1001)
 
 # Trying different perplexity values
-perplexities <- c(5, 7, 8, 9, 10, 11, 12, 13)
+perplexities <- c(5, 7, 8, 9, 10, 11, 12, 13, 14)
 
 plots <- lapply(perplexities, function(p) {
   tsne_result <- Rtsne(
@@ -661,12 +663,13 @@ plots <- lapply(perplexities, function(p) {
   
   ggplot(tsne_df, aes(x = tSNE1, y = tSNE2, color = phylum)) +
     geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(values=phylum_colors)+
     theme_minimal(base_size = 5) +  # make text larger
     theme(legend.position = "none") +  # remove legend
     labs(title = paste("Perplexity =", p))
 })
 
-# Show them together in bigger format
-wrap_plots(plots) + plot_layout(guides = "collect")  
+
+ggpubr::ggarrange(plotlist = plots, ncol = 3, nrow = 3) 
 
 ```
