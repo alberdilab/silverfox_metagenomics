@@ -2014,9 +2014,14 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 </ul></li>
 <li class="chapter" data-level="3" data-path="mag-catalogue.html"><a href="mag-catalogue.html"><i class="fa fa-check"></i><b>3</b> MAG catalogue</a>
 <ul>
-<li class="chapter" data-level="3.1" data-path="mag-catalogue.html"><a href="mag-catalogue.html#genome-phylogeny"><i class="fa fa-check"></i><b>3.1</b> Genome phylogeny</a></li>
-<li class="chapter" data-level="3.2" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-overview"><i class="fa fa-check"></i><b>3.2</b> Functional overview</a></li>
-<li class="chapter" data-level="3.3" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-ordination"><i class="fa fa-check"></i><b>3.3</b> Functional ordination</a></li>
+<li class="chapter" data-level="3.1" data-path="mag-catalogue.html"><a href="mag-catalogue.html#genome-phylogeny"><i class="fa fa-check"></i><b>3.1</b> Genome phylogeny</a>
+<ul>
+<li class="chapter" data-level="3.1.1" data-path="mag-catalogue.html"><a href="mag-catalogue.html#taxonomy-overview"><i class="fa fa-check"></i><b>3.1.1</b> Taxonomy overview</a></li>
+<li class="chapter" data-level="3.1.2" data-path="mag-catalogue.html"><a href="mag-catalogue.html#mag-size-mb"><i class="fa fa-check"></i><b>3.1.2</b> Mag size (MB)</a></li>
+</ul></li>
+<li class="chapter" data-level="3.2" data-path="mag-catalogue.html"><a href="mag-catalogue.html#genome-quality"><i class="fa fa-check"></i><b>3.2</b> Genome quality</a></li>
+<li class="chapter" data-level="3.3" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-overview"><i class="fa fa-check"></i><b>3.3</b> Functional overview</a></li>
+<li class="chapter" data-level="3.4" data-path="mag-catalogue.html"><a href="mag-catalogue.html#functional-ordination"><i class="fa fa-check"></i><b>3.4</b> Functional ordination</a></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://www.alberdilab.dk" target="blank"><b>www.alberdilab.dk</b></a></li>
@@ -2173,14 +2178,15 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <div class="sourceCode" id="cb17"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb17-1"><a href="data-preparation.html#cb17-1" tabindex="-1"></a><span class="fu">save</span>(sample_metadata, </span>
 <span id="cb17-2"><a href="data-preparation.html#cb17-2" tabindex="-1"></a>     genome_metadata, </span>
 <span id="cb17-3"><a href="data-preparation.html#cb17-3" tabindex="-1"></a>     read_counts, </span>
-<span id="cb17-4"><a href="data-preparation.html#cb17-4" tabindex="-1"></a>     genome_counts, </span>
-<span id="cb17-5"><a href="data-preparation.html#cb17-5" tabindex="-1"></a>     genome_counts_filt, </span>
-<span id="cb17-6"><a href="data-preparation.html#cb17-6" tabindex="-1"></a>     genome_tree,</span>
-<span id="cb17-7"><a href="data-preparation.html#cb17-7" tabindex="-1"></a>     genome_gifts, </span>
-<span id="cb17-8"><a href="data-preparation.html#cb17-8" tabindex="-1"></a>     phylum_colors,</span>
-<span id="cb17-9"><a href="data-preparation.html#cb17-9" tabindex="-1"></a>     location_colors,</span>
-<span id="cb17-10"><a href="data-preparation.html#cb17-10" tabindex="-1"></a>     origin_colors,</span>
-<span id="cb17-11"><a href="data-preparation.html#cb17-11" tabindex="-1"></a>     <span class="at">file =</span> <span class="st">&quot;data/data.Rdata&quot;</span>)</span></code></pre></div>
+<span id="cb17-4"><a href="data-preparation.html#cb17-4" tabindex="-1"></a>     genome_annotations,</span>
+<span id="cb17-5"><a href="data-preparation.html#cb17-5" tabindex="-1"></a>     genome_counts, </span>
+<span id="cb17-6"><a href="data-preparation.html#cb17-6" tabindex="-1"></a>     genome_counts_filt, </span>
+<span id="cb17-7"><a href="data-preparation.html#cb17-7" tabindex="-1"></a>     genome_tree,</span>
+<span id="cb17-8"><a href="data-preparation.html#cb17-8" tabindex="-1"></a>     genome_gifts, </span>
+<span id="cb17-9"><a href="data-preparation.html#cb17-9" tabindex="-1"></a>     phylum_colors,</span>
+<span id="cb17-10"><a href="data-preparation.html#cb17-10" tabindex="-1"></a>     location_colors,</span>
+<span id="cb17-11"><a href="data-preparation.html#cb17-11" tabindex="-1"></a>     origin_colors,</span>
+<span id="cb17-12"><a href="data-preparation.html#cb17-12" tabindex="-1"></a>     <span class="at">file =</span> <span class="st">&quot;data/data.Rdata&quot;</span>)</span></code></pre></div>
 
 </div>
 </div>

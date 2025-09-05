@@ -21,5 +21,12 @@ prepare-color-scheme
 wrap-working-objects
 mag-catalogue
 genome-phylogeny
+taxonomy-overview
+mag-size-mb
+genome-quality
 functional-overview
+predicted-genes
+number-of-annotated-genes-and-percentages
+number-of-kegg-annotatated-genes-and-percentages
+function-tree
 functional-ordination

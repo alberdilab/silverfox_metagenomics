@@ -5,6 +5,72 @@ load("data/data.Rdata")
 ```
 ## Genome phylogeny
 
+Circular tree with genome size and completeness
+```{r genome_phylogeny_completeness, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+# Generate the phylum color heatmap
+phylum_heatmap <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    select(genome,phylum) %>%
+    mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
+    column_to_rownames(var = "genome")
+
+
+# Generate  basal tree
+circular_tree <- force.ultrametric(genome_tree, method="extend") %>% # extend to ultrametric for the sake of visualisation
+    ggtree(., layout="fan", open.angle=10, size=0.5)
+
+
+# Add phylum ring
+circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0.05, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=phylum_colors) +
+  labs(fill="Phylum")
+        #theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0))
+
+# Flush color scale to enable a new color scheme in the next ring
+circular_tree <- circular_tree + new_scale_fill()
+
+# Add completeness ring
+circular_tree <- circular_tree +
+        new_scale_fill() +
+        scale_fill_gradient(low = "#d1f4ba", high = "#f4baba") +
+        geom_fruit(
+                data=genome_metadata,
+                geom=geom_bar,
+                mapping = aes(x=completeness, y=genome, fill=contamination),
+                offset = 0.24,
+                pwidth = 0.1,
+                orientation="y",
+              stat="identity")+
+  labs(fill="Contamination")
+
+# Add genome-size ring
+circular_tree <-  circular_tree + new_scale_fill()
+
+circular_tree <-  circular_tree +
+  geom_fruit(
+    data=genome_metadata,
+    geom=geom_bar,
+    mapping = aes(x=length, y=genome),
+    fill = "#1e6e55",
+    offset = 0.05,
+    orientation="y",
+    stat="identity")
+
+
+# Add text
+circular_tree <-  circular_tree +
+        annotate('text', x=2.15, y=0, label='            Phylum', family='arial', size=3.5) +
+        annotate('text', x=2.6, y=0, label='                         Genome quality', family='arial', size=3.5) +
+        annotate('text', x=2.8, y=0, label='                     Genome size', family='arial', size=3.5) 
+
+#Plot circular tree
+circular_tree %>% open_tree(30) %>% rotate_tree(90)
+```
+
+
+
+Circular tree with genome presence/absence in different sample locations and fox behaviour
 ```{r genome_phylogeny, message=FALSE, warning=FALSE}
 # Generate the phylum color heatmap
 phylum_heatmap <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
@@ -101,7 +167,7 @@ aggressive_heatmap <- genome_counts_filt  %>%
 ```{r genome_phylogeny_plot, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
 # Generate  basal tree
 circular_tree <- force.ultrametric(genome_tree, method="extend") %>% # extend to ultrametric for the sake of visualisation
-    ggtree(., layout="fan", open.angle=10, size=0.2)
+    ggtree(., layout="fan", open.angle=10, size=0.3)
 
 # Add phylum ring
 circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0, width=0.05, colnames=FALSE) +
@@ -171,9 +237,44 @@ circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.5, width=0
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
+# Add text
+circular_tree <-  circular_tree +
+        annotate('text', x=2.05, y= 0, label='Phylum', family='arial', size=3.5) +
+        annotate('text', x=2.4, y=0, label='Gut location', family='arial', size=3.5) +
+        annotate('text', x=3.1, y=0, label='Prevalence', family='arial', size=3.5) +
+        annotate('text', x= 3.5,y=0, label='Fox behaviour', family='arial', size=3.5) 
+
+
 #Plot circular tree
 circular_tree %>% open_tree(30) %>% rotate_tree(90)
 ```
+
+### Taxonomy overview
+
+```{r genome_taxonomy_bacteria}
+tax_mag <-genome_metadata %>%
+  group_by(phylum) %>%
+  summarise(mag_n=n())
+
+tax_mag %>%
+  mutate(percetage_mag=round(mag_n*100/sum(mag_n), 2)) %>%
+  arrange(-percetage_mag) %>%
+  tt()
+```
+
+### Mag size (MB)
+
+```{r mag size}
+genome_metadata <- genome_metadata %>%
+  mutate(corrected_size=100*length/completeness) %>%
+  arrange(completeness)
+```
+
+```{r mag_size_all_mean, message=FALSE, warning=FALSE}
+genome_metadata %>%
+  summarise(Average_corrected_size=mean(corrected_size))
+```
+
 ## Genome quality
 
 ```{r genome_quality}
@@ -251,6 +352,40 @@ grid.arrange(grobs = list(genome_completeness,genome_biplot,genome_contamination
 
 ## Functional overview
 
+#### Predicted genes
+```{r predicted_stats, message=FALSE, warning=FALSE}
+pred_genes <- genome_annotations %>%
+  nrow()
+
+cat(pred_genes)
+```
+
+#### Number of annotated genes and percentages
+```{r annotation_stats, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+#How many genes have at least 1 annotation
+genome_annota <- genome_annotations %>%
+  filter(if_any(c(kegg, pfam, cazy), ~ !is.na(.))) %>%
+  nrow()
+
+cat(genome_annota)
+
+#Percentage of predicted genes with at least 1 annotation
+genome_annota*100/pred_genes
+```
+
+#### Number of KEGG annotatated genes and percentages
+```{r kegg_stats_gut, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+# KEGG annotation
+kegg_annota <- genome_annotations %>%
+  filter(!is.na(kegg)) %>%
+  nrow()
+cat(kegg_annota)
+
+# KEGG annotation percentage
+kegg_annota*100/genome_annota
+```
+
+#### Function tree
 ```{r function_heatmap, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
 
 # Aggregate basal GIFT into elements
@@ -297,9 +432,194 @@ function_tree
 
 ## Functional ordination
 
-```{r function_ordination, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+PCoA with Euclidean distances:
+```{r pcoa_ordination, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+gift_pcoa <- genome_gifts %>%
+    to.elements(., GIFT_db) %>%
+    as.data.frame() %>%
+    vegdist(method="euclidean") %>%
+    pcoa()
+
+gift_pcoa_rel_eigen <- gift_pcoa$values$Relative_eig[1:10]
+
+
+# Get genome positions
+gift_pcoa_vectors <- gift_pcoa$vectors %>% #extract vectors
+  as.data.frame() %>% 
+  select(Axis.1,Axis.2) # keep the first 2 axes
+
+gift_pcoa_eigenvalues <- gift_pcoa$values$Eigenvalues[c(1,2)]
+
+gift_pcoa_gifts <- cov(genome_gifts, scale(gift_pcoa_vectors)) %*% diag((gift_pcoa_eigenvalues/(nrow(genome_gifts)-1))^(-0.5)) %>%
+  as.data.frame() %>% 
+  rename(Axis.1=1,Axis.2=2) %>% 
+  rownames_to_column(var="label") %>% 
+  #get function summary vectors
+  mutate(func=substr(label,1,3)) %>% 
+  group_by(func) %>% 
+  summarise(Axis.1=mean(Axis.1),
+            Axis.2=mean(Axis.2)) %>% 
+  rename(label=func) %>% 
+  filter(!label %in% c("S01","S02","S03"))
+```
+
+```{r pcoa_ordination_plot, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+set.seed(101)
+scale <- 20 # scale for vector loadings
+gift_pcoa_vectors %>% 
+  rownames_to_column(var="genome") %>% 
+  left_join(genome_metadata, by="genome") %>%
+  ggplot() +
+      #genome positions
+      scale_color_manual(values=phylum_colors)+
+      geom_point(aes(x=Axis.1,y=Axis.2, color=phylum, size=length), 
+                 alpha=0.9, shape=16) +
+      #scale_color_manual(values=phylum_colors) +
+      scale_size_continuous(range = c(0.1,5)) +
+      #loading positions
+      geom_segment(data=gift_pcoa_gifts, 
+                   aes(x=0, y=0, xend=Axis.1 * scale, yend=Axis.2 * scale),
+                    arrow = arrow(length = unit(0.3, "cm"), 
+                    type = "open", 
+                    angle = 25),
+                    linewidth = 0.5, 
+                    color = "black") +
+     #Primary and secondary scale adjustments
+     scale_x_continuous(name = paste0("PCoA1 (",round(gift_pcoa_rel_eigen[1]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA1")
+            ) +
+     scale_y_continuous(name = paste0("PCoA2 (",round(gift_pcoa_rel_eigen[2]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA2")
+            ) +
+    geom_label_repel(data = gift_pcoa_gifts,
+                     aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
+                     segment.color = 'transparent') +
+    xlim(-3,3) + 
+    ylim(-2.5,2.5) +
+    theme_minimal() + 
+    theme(legend.position = "none")
+```
+
+PCoA with Bray-Curtis (relative composition)
+```{r pcoa_ordination_bray, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+gift_pcoa_bray <- genome_gifts %>%
+    to.elements(., GIFT_db) %>%
+    as.data.frame() %>%
+    vegdist(method="bray") %>%
+    pcoa()
+
+gift_pcoa_rel_eigen_bray <- gift_pcoa_bray$values$Relative_eig[1:10]
+
+
+# Get genome positions
+gift_pcoa_vectors_bray <- gift_pcoa_bray$vectors %>% #extract vectors
+  as.data.frame() %>% 
+  select(Axis.1,Axis.2) # keep the first 2 axes
+
+gift_pcoa_eigenvalues_bray <- gift_pcoa_bray$values$Eigenvalues[c(1,2)]
+
+gift_pcoa_gifts_bray <- cov(genome_gifts, scale(gift_pcoa_vectors_bray)) %*% diag((gift_pcoa_eigenvalues_bray/(nrow(genome_gifts)-1))^(-0.5)) %>%
+  as.data.frame() %>% 
+  rename(Axis.1=1,Axis.2=2) %>% 
+  rownames_to_column(var="label") %>% 
+  #get function summary vectors
+  mutate(func=substr(label,1,3)) %>% 
+  group_by(func) %>% 
+  summarise(Axis.1=mean(Axis.1),
+            Axis.2=mean(Axis.2)) %>% 
+  rename(label=func) %>% 
+  filter(!label %in% c("S01","S02","S03"))
+
+```
+
+```{r pcoa_ordination_plot_bray, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+set.seed(101)
+scale <- 20 # scale for vector loadings
+gift_pcoa_vectors_bray %>% 
+  rownames_to_column(var="genome") %>% 
+  left_join(genome_metadata, by="genome") %>%
+  ggplot() +
+      #genome positions
+      scale_color_manual(values=phylum_colors)+
+      geom_point(aes(x=Axis.1,y=Axis.2, color=phylum, size=length), 
+                 alpha=0.9, shape=16) +
+      #scale_color_manual(values=phylum_colors) +
+      scale_size_continuous(range = c(0.1,5)) +
+      #loading positions
+      geom_segment(data=gift_pcoa_gifts_bray, 
+                   aes(x=0, y=0, xend=Axis.1 * scale, yend=Axis.2 * scale),
+                    arrow = arrow(length = unit(0.3, "cm"), 
+                    type = "open", 
+                    angle = 25),
+                    linewidth = 0.5, 
+                    color = "black") +
+     #Primary and secondary scale adjustments
+     scale_x_continuous(name = paste0("PCoA1 (",round(gift_pcoa_rel_eigen_bray[1]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA1")
+            ) +
+     scale_y_continuous(name = paste0("PCoA2 (",round(gift_pcoa_rel_eigen_bray[2]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA2")
+            ) +
+    geom_label_repel(data = gift_pcoa_gifts_bray,
+                     aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
+                     segment.color = 'transparent') +
+   xlim(-0.8,0.8) + 
+    ylim(-0.8,0.8) +
+    theme_minimal() + 
+    theme(legend.position = "none")
+```
+
+
+UMAP
+
+```{r umap_parameter_grid, message=FALSE, fig.height=12, fig.width=15}
+set.seed(1001)
+
+# Define parameter grid
+neighbors_values <- c(5, 15, 30)
+min_dist_values <- c(0.1, 0.3, 0.5)
+
+umap_plots <- list()
+
+# Loop over combinations
+for (nn in neighbors_values) {
+  for (md in min_dist_values) {
+    
+    umap_result <- umap(function_table,
+                        n_neighbors = nn,
+                        min_dist = md,
+                        metric = "euclidean")
+    
+    df_umap <- as.data.frame(umap_result) %>%
+      mutate(genome = rownames(function_table)) %>%
+      inner_join(genome_metadata, by="genome") %>%
+      rename(UMAP1 = V1, UMAP2 = V2)
+    
+    p <- ggplot(df_umap, aes(x = UMAP1, y = UMAP2,
+                             color = phylum, size = length)) +
+      geom_point(alpha = 0.7, shape=16) +
+      scale_color_manual(values = phylum_colors) +
+      theme_minimal() +
+      labs(title = paste0("UMAP (neighbors=", nn,
+                          ", min_dist=", md, ")"),
+           color="Phylum", size="Genome size") +
+      guides(color = guide_legend(override.aes = list(size = 5)))
+    
+    umap_plots[[paste(nn, md, sep="_")]] <- p
+  }
+}
+
+# Combine into one grid
+wrap_plots(umap_plots)
+```
+
+
+
+
+```{r function_ordination_tsne, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
 # Generate the tSNE ordination
-tSNE_function <- Rtsne(X=function_table, dims = 2, check_duplicates = FALSE)
+set.seed(1001)
+tSNE_function <- Rtsne(X=function_table, dims = 2, perplexity = 10, check_duplicates = FALSE)
 
 # Plot the ordination
 function_ordination <- tSNE_function$Y %>%
@@ -307,7 +627,7 @@ function_ordination <- tSNE_function$Y %>%
                 mutate(genome=rownames(function_table)) %>%
                 inner_join(genome_metadata, by="genome") %>%
                 rename(tSNE1="V1", tSNE2="V2") %>%
-                dplyr::select(genome,phylum,tSNE1,tSNE2, length) %>%
+                select(genome,phylum,tSNE1,tSNE2, length) %>%
                 ggplot(aes(x = tSNE1, y = tSNE2, color = phylum, size=length))+
                             geom_point(shape=16, alpha=0.7) +
                             scale_color_manual(values=phylum_colors) +
@@ -318,24 +638,35 @@ function_ordination <- tSNE_function$Y %>%
 function_ordination
 ```
 
-```{r pcoa, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
-dist_matrix <- vegdist(function_table, method = "bray")
-pcoa_res <- ape::pcoa(dist_matrix)
 
-function_ordination2 <- pcoa_res$vectors[,1:2] %>%
-  as.data.frame() %>%
-  mutate(genome = rownames(function_table)) %>%
-  inner_join(genome_metadata, by="genome") %>%
-  rename(PCoA1 = Axis.1, PCoA2 = Axis.2) %>%
-  dplyr::select(genome, phylum, PCoA1, PCoA2, length) %>%
-  ggplot(aes(x = PCoA1, y = PCoA2, color = phylum, size = length)) +
-    geom_point(shape=16, alpha=0.7) +
-    scale_color_manual(values=phylum_colors) +
-    theme_minimal() +
-    labs(color="Phylum", size="Genome size") +
-    guides(color = guide_legend(override.aes = list(size = 5))) # enlarge Phylum dots in legend
 
-function_ordination2
+```{r testing_perplexity}
+set.seed(1001)
+
+# Trying different perplexity values
+perplexities <- c(5, 7, 8, 9, 10, 11, 12, 13)
+
+plots <- lapply(perplexities, function(p) {
+  tsne_result <- Rtsne(
+    X = function_table, 
+    dims = 2, 
+    perplexity = p, 
+    check_duplicates = FALSE
+  )
+  
+  tsne_df <- as.data.frame(tsne_result$Y) %>%
+    mutate(genome = rownames(function_table)) %>%
+    inner_join(genome_metadata, by = "genome") %>%
+    rename(tSNE1 = "V1", tSNE2 = "V2")
+  
+  ggplot(tsne_df, aes(x = tSNE1, y = tSNE2, color = phylum)) +
+    geom_point(alpha = 0.7, size = 2) +
+    theme_minimal(base_size = 5) +  # make text larger
+    theme(legend.position = "none") +  # remove legend
+    labs(title = paste("Perplexity =", p))
+})
+
+# Show them together in bigger format
+wrap_plots(plots) + plot_layout(guides = "collect")  
 
 ```
-
