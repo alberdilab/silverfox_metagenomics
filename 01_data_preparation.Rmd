@@ -170,6 +170,7 @@ All working objects are wrapped into a single Rdata object to facilitate downstr
 save(sample_metadata, 
      genome_metadata, 
      read_counts, 
+     genome_annotations,
      genome_counts, 
      genome_counts_filt, 
      genome_tree,
