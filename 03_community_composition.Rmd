@@ -1,0 +1,223 @@
+# Community composition
+
+```{r load_data_community, echo=FALSE}
+load("data/data.Rdata")
+```
+
+## Taxonomy overview 
+
+### Stacked barplot
+
+```{r taxonomy_barplot_location, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_grid(. ~ gut_location,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+
+```{r taxonomy_barplot, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~ gut_location + fox_behaviour,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_2, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~  fox_behaviour + gut_location,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_3, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~  fox_behaviour + sample_type,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_4, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~   sample_type+ fox_behaviour,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+
+### Phylum relative abundances
+
+```{r taxonomy_phylum_summary, warning=FALSE, comments="", message=FALSE}
+phylum_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  left_join(genome_metadata, by = join_by(genome == genome)) %>%
+  group_by(sample,phylum,fox_behaviour) %>%
+  summarise(relabun=sum(count))
+
+phylum_summary %>%
+    group_by(phylum) %>%
+    summarise(total_mean=mean(relabun*100, na.rm=T),
+              total_sd=sd(relabun*100, na.rm=T),
+              tame_mean=mean(relabun[fox_behaviour =="tame"]*100, na.rm=T),
+              tame_sd=sd(relabun[fox_behaviour =="tame"]*100, na.rm=T),
+              aggressive_mean=mean(relabun[fox_behaviour =="aggr"]*100, na.rm=T),
+              aggressive_sd=sd(relabun[fox_behaviour=="aggr"]*100, na.rm=T)) %>%
+    mutate(total=str_c(round(total_mean,2),"±",round(total_sd,2)),
+           tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
+           aggresive=str_c(round(aggressive_mean,2),"±",round(aggressive_sd,2))) %>% 
+    arrange(-total_mean) %>% 
+    select(phylum,total,tame,aggresive) %>% 
+    tt()
+```
+
+```{r taxonomy_boxplot_phylum, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+phylum_arrange <- phylum_summary %>%
+    group_by(phylum) %>%
+    summarise(mean=mean(relabun)) %>%
+    arrange(-mean) %>%
+    dplyr::select(phylum) %>%
+    pull()
+
+phylum_summary %>%
+  filter(phylum %in% phylum_arrange) %>%
+  mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+    filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=phylum, group=phylum, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[rev(phylum_arrange)]) +
+        scale_fill_manual(values=phylum_colors[-8]) +
+        geom_boxplot(alpha=0.2)+
+        geom_jitter(alpha=0.5) + 
+        facet_nested(. ~ gut_location)+ 
+        theme_minimal() + 
+        theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 10),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
+              ) +
+        labs(y="Phylum",x="Relative abundance")
+```
+
+```{r taxonomy_boxplot_phylum_behaviour, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+phylum_summary %>%
+  filter(phylum %in% phylum_arrange) %>%
+  mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+    filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=phylum, group=phylum, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[rev(phylum_arrange)]) +
+        scale_fill_manual(values=phylum_colors[-8]) +
+        geom_boxplot(alpha=0.2)+
+        geom_jitter(alpha=0.5) + 
+        facet_nested(. ~ fox_behaviour)+ 
+        theme_minimal() + 
+        theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 10),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
+              ) +
+        labs(y="Phylum",x="Relative abundance")
+```
+
+
+

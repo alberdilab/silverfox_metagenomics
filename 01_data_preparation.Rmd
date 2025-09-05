@@ -21,14 +21,9 @@ sample_metadata <- read_csv("data/sample_metadata.csv") %>%
 
 ```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_tsv("data/counts.tsv") %>%
-    rename(genome=1)
+    rename(genome=1)%>%
+    select(any_of(c("genome", sample_metadata$sample)))
 
-    #%>%
-    #select(any_of(c("genome", sample_metadata$sample)))
-
-#colnames(read_counts)[which(!(colnames(read_counts) %in% sample_metadata$sample))]
-    
-  
 ```
 
 
@@ -37,10 +32,8 @@ read_counts <- read_tsv("data/counts.tsv") %>%
 ```{r filter_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
 read_counts <- read_counts %>%
   filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
-  select_if(~!all(. == 0)) 
-
-#%>%
- # select(one_of(c("genome",sample_metadata$sample)))
+  select_if(~!all(. == 0)) %>%
+  select(one_of(c("genome",sample_metadata$sample)))
 
 ```
 

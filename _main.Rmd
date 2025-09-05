@@ -1,0 +1,1177 @@
+---
+title: "AlberdiLab | Silver fox metagenomics"
+subtitle: MSc project
+author:
+  - Irene Martínez, M Thomas P Gilbert, Antton Alberdi^[University of Copenhagen, antton.alberdi@sund.ku.dk]
+date: "Last update: `r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib, packages.bib]
+url: https://alberdilab.github.io/silverfox_metagenomics
+description: |
+  Data analysis code for the study of Belyayev silverfox metagenomes
+link-citations: yes
+github-repo: alberdilab/silverfox_metagenomics
+---
+
+```{r knitr_opts, echo=FALSE}
+knitr::opts_chunk$set(
+    class.source = "script-source",
+    class.output = "script-output",
+    comment = NA)
+```
+
+# Introduction
+
+This webbook contains all the code used for data analysis in study of gut microbiomes of newts across ponds included in a restoration plan.
+
+## Prepare the R environment
+
+### Environment
+
+To reproduce all the analyses locally, clone this repository in your computer using:
+
+```
+RStudio > New Project > Version Control > Git
+```
+
+And indicating the following git repository:
+
+> https://github.com/alberdilab/silverfox_metagenomics.git
+
+Once the R project has been created, follow the instructions and code chunks shown in this webbook.
+
+### Libraries
+
+The following R packages are required for the data analysis.
+
+```{r load_libraries, warning=FALSE, comments="", message=FALSE}
+# Base
+library(R.utils)
+library(knitr)
+library(tidyverse)
+library(devtools)
+library(tinytable)
+library(rairtable)
+library(janitor)
+library(broom)
+
+# For tree handling
+library(ape)
+library(phyloseq)
+library(phytools)
+
+# For plotting
+library(ggplot2)
+library(ggrepel)
+library(ggpubr)
+library(ggnewscale)
+library(gridExtra)
+library(ggtreeExtra)
+library(ggtree)
+library(ggh4x)
+library(UpSetR)
+library(viridis)
+
+# For statistics
+library(spaa)
+library(vegan)
+library(Rtsne)
+library(geiger)
+library(hilldiv2)
+library(distillR)
+library(ANCOMBC)
+library(lme4)
+library(nlme)
+library(pairwiseAdonis)
+library(emmeans)
+library(pheatmap)
+library(rstatix)
+library(uwot)
+```
+
+<!--chapter:end:index.Rmd-->
+
+# Data preparation
+
+## Load data
+
+Load the original data files outputted by the bioinformatic pipeline.
+
+### Sample metadata
+
+```{r load_sample_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+sample_metadata <- read_csv("data/sample_metadata.csv") %>%
+  rename(sample =1, 
+         gut_location = 2,
+         fox_behaviour = 3, 
+         fox_sex = 4,
+         sample_type = 5, 
+         year = 6)
+```
+
+
+### Read counts
+
+```{r load_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+read_counts <- read_tsv("data/counts.tsv") %>%
+    rename(genome=1)%>%
+    select(any_of(c("genome", sample_metadata$sample)))
+
+```
+
+
+### Filter read counts
+
+```{r filter_read_counts, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+read_counts <- read_counts %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0)) %>%
+  select(one_of(c("genome",sample_metadata$sample)))
+
+```
+
+
+### Genome info
+
+```{r load_genome_info, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_info <- read_csv("data/genomeInfo.csv") %>%
+   mutate(genome = gsub(".fa$", "", genome)) %>%
+   semi_join(., read_counts, by = "genome") %>%
+   arrange(match(genome,read_counts$genome))
+```
+
+### Genome taxonomy
+
+```{r load_genome_taxonomy, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_taxonomy <- read_tsv("data/genome_taxonomy.tsv") %>%
+  rename(genome = 1)
+
+genome_taxonomy_expanded <- genome_taxonomy %>% 
+  separate(classification,
+           into = c("domain", "phylum", "class", "order", "family", "genus", "species"),
+           sep = ";",
+           fill = "right", remove = FALSE) %>%
+  mutate(across(domain:species, ~ str_replace(.x, "^[a-z]__", "")))%>%
+  mutate(phylum = case_when(
+    phylum == "Actinobacteriota" ~ "Actinomycetota",
+    phylum == "Firmicutes" ~ "Bacillota",
+    phylum == "Firmicutes_A" ~ "Bacillota_A",
+    phylum == "Firmicutes_C" ~ "Bacillota_C",
+    phylum == "Cyanobacteria" ~ "Cyanobacteriota",
+    phylum == "Proteobacteria" ~ "Pseudomonadota",
+    TRUE ~ phylum))
+```
+
+### Genome metadata
+```{r load_genome_metadata, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_metadata <- genome_taxonomy_expanded %>%
+  left_join(genome_info, by = "genome")
+```
+
+
+### Genome coverage
+
+```{r load_bases, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_coverage <- read_tsv("data/bases.tsv") %>%
+    rename(genome=1) %>%
+    left_join(genome_info %>% select(genome, length), by = "genome") %>%
+    mutate(across(where(is.numeric), ~ .x / length))
+```
+
+
+### Genome tree
+
+```{r load_genome_tree, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_tree <- read_tree("data/gtdbtk.backbone.bac120.classify.tree")
+genome_tree$tip.label <- str_replace_all(genome_tree$tip.label,"'", "") #remove single quotes in MAG names
+genome_tree <- keep.tip(genome_tree, tip=genome_metadata$genome) # keep only MAG tips
+```
+### Genome annotations
+
+```{r load_gene_annotations, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_annotations <- read_tsv("data/gene_annotations.tsv.xz") %>%
+  mutate(genome = sub("\\^.*", "", gene)) %>%
+  select(1, genome, everything())
+```
+
+## Create working objects
+
+Transform the original data files into working objects for downstream analyses.
+
+### Filter reads by coverage
+
+```{r filter_coverage, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+min_coverage=0.3
+read_counts_filt <- genome_coverage %>%
+  select(-length) %>% 
+  mutate(across(where(is.numeric), ~ ifelse(. > min_coverage, 1, 0))) %>%
+  mutate(across(-1, ~ . * read_counts[[cur_column()]])) 
+```
+
+
+### Transform reads into genome counts
+
+```{r calculate_genome_counts_unfiltered, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+readlength=150
+genome_counts <- read_counts %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength) ))
+```
+
+```{r calculate_genome_counts_filtered, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+readlength=150
+genome_counts_filt <- read_counts_filt %>%
+  mutate(across(where(is.numeric), ~ . / (genome_metadata$length / readlength) ))
+```
+
+### Distill annotations into GIFTs 
+
+```{r distill_annotations, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+genome_gifts <- distill(genome_annotations,GIFT_db,genomecol= 2, annotcol=c(6,7,8,9), verbosity = F)
+```
+
+## Prepare color scheme
+
+[AlberdiLab](www.alberdilab.dk) projects use unified color schemes developed for the [Earth Hologenome Initiative](www.earthhologenome.org), to facilitate figure interpretation.
+
+```{r get_ehi_colors, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    mutate(phylum=str_remove_all(phylum, "p__")) %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    dplyr::select(phylum, colors) %>% 
+    unique() %>%
+    arrange(phylum) %>%
+    pull(colors, name=phylum)
+
+location_colors <- c('#3D5C61','#41B6C0','#90C8C5','#E5D388','#BFA366','#6E5244')
+
+origin_colors <- c("#bd70ae","#949293")
+```
+
+## Wrap working objects
+
+All working objects are wrapped into a single Rdata object to facilitate downstream usage.
+
+```{r wrap_working_objects, warning=FALSE, comments="", message=FALSE, eval=FALSE}
+save(sample_metadata, 
+     genome_metadata, 
+     read_counts, 
+     genome_annotations,
+     genome_counts, 
+     genome_counts_filt, 
+     genome_tree,
+     genome_gifts, 
+     phylum_colors,
+     location_colors,
+     origin_colors,
+     file = "data/data.Rdata")
+```
+
+
+<!--chapter:end:01_data_preparation.Rmd-->
+
+# MAG catalogue
+
+```{r load_data_mag, message=FALSE, warning=FALSE, echo=FALSE}
+load("data/data.Rdata")
+```
+## Genome phylogeny
+
+Circular tree with genome size and completeness
+```{r genome_phylogeny_completeness, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+# Generate the phylum color heatmap
+phylum_heatmap <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    select(genome,phylum) %>%
+    mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
+    column_to_rownames(var = "genome")
+
+
+# Generate  basal tree
+circular_tree <- force.ultrametric(genome_tree, method="extend") %>% # extend to ultrametric for the sake of visualisation
+    ggtree(., layout="fan", open.angle=10, size=0.5)
+
+
+# Add phylum ring
+circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0.05, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=phylum_colors) +
+  labs(fill="Phylum")
+        #theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0))
+
+# Flush color scale to enable a new color scheme in the next ring
+circular_tree <- circular_tree + new_scale_fill()
+
+# Add completeness ring
+circular_tree <- circular_tree +
+        new_scale_fill() +
+        scale_fill_gradient(low = "#d1f4ba", high = "#f4baba") +
+        geom_fruit(
+                data=genome_metadata,
+                geom=geom_bar,
+                mapping = aes(x=completeness, y=genome, fill=contamination),
+                offset = 0.24,
+                pwidth = 0.1,
+                orientation="y",
+              stat="identity")+
+  labs(fill="Contamination")
+
+# Add genome-size ring
+circular_tree <-  circular_tree + new_scale_fill()
+
+circular_tree <-  circular_tree +
+  geom_fruit(
+    data=genome_metadata,
+    geom=geom_bar,
+    mapping = aes(x=length, y=genome),
+    fill = "#1e6e55",
+    offset = 0.05,
+    orientation="y",
+    stat="identity")
+
+
+# Add text
+circular_tree <-  circular_tree +
+        annotate('text', x=2.15, y=0, label='            Phylum', family='arial', size=3.5) +
+        annotate('text', x=2.6, y=0, label='                         Genome quality', family='arial', size=3.5) +
+        annotate('text', x=2.8, y=0, label='                     Genome size', family='arial', size=3.5) 
+
+#Plot circular tree
+circular_tree %>% open_tree(30) %>% rotate_tree(90)
+```
+
+
+
+Circular tree with genome presence/absence in different sample locations and fox behaviour
+```{r genome_phylogeny, message=FALSE, warning=FALSE}
+# Generate the phylum color heatmap
+phylum_heatmap <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    mutate(phylum=str_remove_all(phylum, "p__")) %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    dplyr::select(genome,phylum) %>%
+    mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
+    column_to_rownames(var = "genome")
+
+# Generate prevalence data
+prevalence_data <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  group_by(genome,gut_location) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,1,0)) %>% 
+  group_by(genome) %>%
+  summarise(prevalence=sum(presence))
+
+# Generate F_colon heatmap
+f_colon_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(gut_location =="F_colon") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate M_colon heatmap
+m_colon_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(gut_location =="M_colon") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate D_ileum heatmap
+d_ileum_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(gut_location =="D_ileum") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate K_ileum heatmap
+k_ileum_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(gut_location =="K_ileum") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate Gut content heatmap
+gut_content_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(sample_type =="Gut content") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+
+# Generate Gut tissue heatmap
+gut_tissue_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(sample_type =="Gut tissue") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate tame heatmap
+tame_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(fox_behaviour=="tame") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+
+# Generate aggressive heatmap
+aggressive_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(fox_behaviour=="aggr") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
+```
+
+```{r genome_phylogeny_plot, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+# Generate  basal tree
+circular_tree <- force.ultrametric(genome_tree, method="extend") %>% # extend to ultrametric for the sake of visualisation
+    ggtree(., layout="fan", open.angle=10, size=0.3)
+
+# Add phylum ring
+circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=phylum_colors) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add F_colon ring
+circular_tree <- gheatmap(circular_tree, f_colon_heatmap, offset=0.2, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values = c("absent" = "#ffffff", "present" = "#3D5C61")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add M_colon ring
+circular_tree <- gheatmap(circular_tree, m_colon_heatmap, offset=0.3, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#41B6C0")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add D_ileum ring
+circular_tree <- gheatmap(circular_tree, d_ileum_heatmap, offset=0.4, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#90C8C5")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add K_ileum ring
+circular_tree <- gheatmap(circular_tree, k_ileum_heatmap, offset=0.5, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("absent" =  "#ffffff", "present" = "#E5D388")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add Gut content ring
+circular_tree <- gheatmap(circular_tree, gut_content_heatmap, offset=0.7, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("absent" ="#ffffff","present" = "#BFA366")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add Gut tissue ring
+circular_tree <- gheatmap(circular_tree, gut_tissue_heatmap, offset=0.8, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#6E5244")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+
+
+# Add prevalence ring
+circular_tree <-  circular_tree +
+        new_scale_fill() +
+        scale_fill_manual(values = "#cccccc") +
+        geom_fruit(
+             data=prevalence_data,
+             geom=geom_bar,
+             mapping = aes(x=prevalence, y=genome),
+                 offset = 0.5,
+                 orientation="y",
+         stat="identity")
+
+# Add tame ring
+circular_tree <- gheatmap(circular_tree, tame_heatmap, offset=1.4, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#bd70ae")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add aggressive ring
+circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.5, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#949293")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
+# Add text
+circular_tree <-  circular_tree +
+        annotate('text', x=2.05, y= 0, label='Phylum', family='arial', size=3.5) +
+        annotate('text', x=2.4, y=0, label='Gut location', family='arial', size=3.5) +
+        annotate('text', x=3.1, y=0, label='Prevalence', family='arial', size=3.5) +
+        annotate('text', x= 3.5,y=0, label='Fox behaviour', family='arial', size=3.5) 
+
+
+#Plot circular tree
+circular_tree %>% open_tree(30) %>% rotate_tree(90)
+```
+
+### Taxonomy overview
+
+```{r genome_taxonomy_bacteria}
+tax_mag <-genome_metadata %>%
+  group_by(phylum) %>%
+  summarise(mag_n=n())
+
+tax_mag %>%
+  mutate(percetage_mag=round(mag_n*100/sum(mag_n), 2)) %>%
+  arrange(-percetage_mag) %>%
+  tt()
+```
+
+### Mag size (MB)
+
+```{r mag size}
+genome_metadata <- genome_metadata %>%
+  mutate(corrected_size=100*length/completeness) %>%
+  arrange(completeness)
+```
+
+```{r mag_size_all_mean, message=FALSE, warning=FALSE}
+genome_metadata %>%
+  summarise(Average_corrected_size=mean(corrected_size))
+```
+
+## Genome quality
+
+```{r genome_quality}
+tibble(Completeness=
+         paste0(round(genome_metadata$completeness %>% mean(),2),
+                "±",
+                round(genome_metadata$completeness %>% sd(),2)),
+       Contamination=
+           paste0(round(genome_metadata$contamination %>% mean(),2),
+                "±",
+                round(genome_metadata$contamination %>% sd(),2))) %>%
+  tt()
+```
+
+
+```{r genome_quality_plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+
+#Generate quality biplot
+genome_biplot <- genome_metadata %>%
+  dplyr::select(c(genome,phylum,completeness,contamination,length)) %>%
+  arrange(match(genome, rev(genome_tree$tip.label))) %>% #sort MAGs according to phylogenetic tree
+  ggplot(aes(x=completeness,y=contamination,size=length,color=phylum)) +
+              geom_point(alpha=0.7) +
+                    xlim(c(70,100)) +
+                    ylim(c(10,0)) +
+                    scale_color_manual(values=phylum_colors) +
+                    labs(y= "Contamination", x = "Completeness") +
+                    theme_classic() +
+                    theme(legend.position = "none")
+
+#Generate contamination boxplot
+genome_contamination <- genome_metadata %>%
+            ggplot(aes(y=contamination)) +
+                    ylim(c(10,0)) +
+                    geom_boxplot(colour = "#999999", fill="#cccccc") +
+                    theme_classic() +
+                    theme(legend.position = "none",
+                    axis.line = element_blank(),
+                    axis.title = element_blank(),
+                    axis.text=element_blank(),
+                    axis.ticks=element_blank(),
+                        plot.margin = unit(c(0, 0, 0.40, 0),"inches")) #add bottom-margin (top, right, bottom, left)
+
+#Generate completeness boxplot
+genome_completeness <- genome_metadata %>%
+        ggplot(aes(x=completeness)) +
+                xlim(c(70,100)) +
+                geom_boxplot(colour = "#999999", fill="#cccccc") +
+                theme_classic() +
+                theme(legend.position = "none",
+                    axis.line = element_blank(),
+                    axis.title = element_blank(),
+                    axis.text=element_blank(),
+                    axis.ticks=element_blank(),
+                    plot.margin = unit(c(0, 0, 0, 0.50),"inches")) #add left-margin (top, right, bottom, left)
+
+#Render composite figure
+#pdf("figures/completeness_contamination.pdf",width=10, height=5)
+grid.arrange(grobs = list(genome_completeness,genome_biplot,genome_contamination),
+        layout_matrix = rbind(c(1,1,1,1,1,1,1,1,1,1,1,4),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3),
+                              c(2,2,2,2,2,2,2,2,2,2,2,3)))
+#dev.off()
+```
+
+
+## Functional overview
+
+#### Predicted genes
+```{r predicted_stats, message=FALSE, warning=FALSE}
+pred_genes <- genome_annotations %>%
+  nrow()
+
+cat(pred_genes)
+```
+
+#### Number of annotated genes and percentages
+```{r annotation_stats, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+#How many genes have at least 1 annotation
+genome_annota <- genome_annotations %>%
+  filter(if_any(c(kegg, pfam, cazy), ~ !is.na(.))) %>%
+  nrow()
+
+cat(genome_annota)
+
+#Percentage of predicted genes with at least 1 annotation
+genome_annota*100/pred_genes
+```
+
+#### Number of KEGG annotatated genes and percentages
+```{r kegg_stats_gut, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+# KEGG annotation
+kegg_annota <- genome_annotations %>%
+  filter(!is.na(kegg)) %>%
+  nrow()
+cat(kegg_annota)
+
+# KEGG annotation percentage
+kegg_annota*100/genome_annota
+```
+
+#### Function tree
+```{r function_heatmap, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
+
+# Aggregate basal GIFT into elements
+function_table <- genome_gifts %>%
+    to.elements(., GIFT_db)
+
+# Generate  basal tree
+function_tree <- force.ultrametric(genome_tree, method="extend") %>%
+                ggtree(., size = 0.3) 
+
+#Add phylum colors next to the tree tips
+function_tree <- gheatmap(function_tree, phylum_heatmap, offset=0, width=0.1, colnames=FALSE) +
+            scale_fill_manual(values=phylum_colors) +
+            labs(fill="Phylum")
+
+#Reset fill scale to use a different colour profile in the heatmap
+function_tree <- function_tree + new_scale_fill()
+
+#Add functions heatmap
+function_tree <- gheatmap(function_tree, function_table, offset=0.5, width=3.5, colnames=FALSE) +
+            vexpand(.08) +
+            coord_cartesian(clip = "off") +
+            scale_fill_gradient(low = "#f4f4f4", high = "steelblue", na.value="white") +
+            labs(fill="GIFT")
+
+#Reset fill scale to use a different colour profile in the heatmap
+function_tree <- function_tree + new_scale_fill()
+
+# Add completeness barplots
+function_tree <- function_tree +
+            geom_fruit(data=genome_metadata,
+            geom=geom_bar,
+            grid.params=list(axis="x", text.size=2, nbreak = 1),
+            axis.params=list(vline=TRUE),
+            mapping = aes(x=length, y=genome, fill=completeness),
+                 offset = 3.8,
+                 orientation="y",
+                 stat="identity") +
+            scale_fill_gradient(low = "#cf8888", high = "#a2cc87") +
+            labs(fill="Genome\ncompleteness")
+
+function_tree
+```
+
+## Functional ordination
+
+PCoA with Euclidean distances:
+```{r pcoa_ordination, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+gift_pcoa <- genome_gifts %>%
+    to.elements(., GIFT_db) %>%
+    as.data.frame() %>%
+    vegdist(method="euclidean") %>%
+    pcoa()
+
+gift_pcoa_rel_eigen <- gift_pcoa$values$Relative_eig[1:10]
+
+
+# Get genome positions
+gift_pcoa_vectors <- gift_pcoa$vectors %>% #extract vectors
+  as.data.frame() %>% 
+  select(Axis.1,Axis.2) # keep the first 2 axes
+
+gift_pcoa_eigenvalues <- gift_pcoa$values$Eigenvalues[c(1,2)]
+
+gift_pcoa_gifts <- cov(genome_gifts, scale(gift_pcoa_vectors)) %*% diag((gift_pcoa_eigenvalues/(nrow(genome_gifts)-1))^(-0.5)) %>%
+  as.data.frame() %>% 
+  rename(Axis.1=1,Axis.2=2) %>% 
+  rownames_to_column(var="label") %>% 
+  #get function summary vectors
+  mutate(func=substr(label,1,3)) %>% 
+  group_by(func) %>% 
+  summarise(Axis.1=mean(Axis.1),
+            Axis.2=mean(Axis.2)) %>% 
+  rename(label=func) %>% 
+  filter(!label %in% c("S01","S02","S03"))
+```
+
+```{r pcoa_ordination_plot, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+set.seed(101)
+scale <- 20 # scale for vector loadings
+gift_pcoa_vectors %>% 
+  rownames_to_column(var="genome") %>% 
+  left_join(genome_metadata, by="genome") %>%
+  ggplot() +
+      #genome positions
+      scale_color_manual(values=phylum_colors)+
+      geom_point(aes(x=Axis.1,y=Axis.2, color=phylum, size=length), 
+                 alpha=0.9, shape=16) +
+      #scale_color_manual(values=phylum_colors) +
+      scale_size_continuous(range = c(0.1,5)) +
+      #loading positions
+      geom_segment(data=gift_pcoa_gifts, 
+                   aes(x=0, y=0, xend=Axis.1 * scale, yend=Axis.2 * scale),
+                    arrow = arrow(length = unit(0.3, "cm"), 
+                    type = "open", 
+                    angle = 25),
+                    linewidth = 0.5, 
+                    color = "black") +
+     #Primary and secondary scale adjustments
+     scale_x_continuous(name = paste0("PCoA1 (",round(gift_pcoa_rel_eigen[1]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA1")
+            ) +
+     scale_y_continuous(name = paste0("PCoA2 (",round(gift_pcoa_rel_eigen[2]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA2")
+            ) +
+    geom_label_repel(data = gift_pcoa_gifts,
+                     aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
+                     segment.color = 'transparent') +
+    xlim(-3,3) + 
+    ylim(-2.5,2.5) +
+    theme_minimal() + 
+    theme(legend.position = "none")
+```
+
+PCoA with Bray-Curtis (relative composition)
+```{r pcoa_ordination_bray, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+gift_pcoa_bray <- genome_gifts %>%
+    to.elements(., GIFT_db) %>%
+    as.data.frame() %>%
+    vegdist(method="bray") %>%
+    pcoa()
+
+gift_pcoa_rel_eigen_bray <- gift_pcoa_bray$values$Relative_eig[1:10]
+
+
+# Get genome positions
+gift_pcoa_vectors_bray <- gift_pcoa_bray$vectors %>% #extract vectors
+  as.data.frame() %>% 
+  select(Axis.1,Axis.2) # keep the first 2 axes
+
+gift_pcoa_eigenvalues_bray <- gift_pcoa_bray$values$Eigenvalues[c(1,2)]
+
+gift_pcoa_gifts_bray <- cov(genome_gifts, scale(gift_pcoa_vectors_bray)) %*% diag((gift_pcoa_eigenvalues_bray/(nrow(genome_gifts)-1))^(-0.5)) %>%
+  as.data.frame() %>% 
+  rename(Axis.1=1,Axis.2=2) %>% 
+  rownames_to_column(var="label") %>% 
+  #get function summary vectors
+  mutate(func=substr(label,1,3)) %>% 
+  group_by(func) %>% 
+  summarise(Axis.1=mean(Axis.1),
+            Axis.2=mean(Axis.2)) %>% 
+  rename(label=func) %>% 
+  filter(!label %in% c("S01","S02","S03"))
+
+```
+
+```{r pcoa_ordination_plot_bray, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+set.seed(101)
+scale <- 20 # scale for vector loadings
+gift_pcoa_vectors_bray %>% 
+  rownames_to_column(var="genome") %>% 
+  left_join(genome_metadata, by="genome") %>%
+  ggplot() +
+      #genome positions
+      scale_color_manual(values=phylum_colors)+
+      geom_point(aes(x=Axis.1,y=Axis.2, color=phylum, size=length), 
+                 alpha=0.9, shape=16) +
+      #scale_color_manual(values=phylum_colors) +
+      scale_size_continuous(range = c(0.1,5)) +
+      #loading positions
+      geom_segment(data=gift_pcoa_gifts_bray, 
+                   aes(x=0, y=0, xend=Axis.1 * scale, yend=Axis.2 * scale),
+                    arrow = arrow(length = unit(0.3, "cm"), 
+                    type = "open", 
+                    angle = 25),
+                    linewidth = 0.5, 
+                    color = "black") +
+     #Primary and secondary scale adjustments
+     scale_x_continuous(name = paste0("PCoA1 (",round(gift_pcoa_rel_eigen_bray[1]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA1")
+            ) +
+     scale_y_continuous(name = paste0("PCoA2 (",round(gift_pcoa_rel_eigen_bray[2]*100, digits = 2), " %)"),
+                      sec.axis = sec_axis(~ . / scale, name = "Loadings on PCoA2")
+            ) +
+    geom_label_repel(data = gift_pcoa_gifts_bray,
+                     aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
+                     segment.color = 'transparent') +
+   xlim(-0.8,0.8) + 
+    ylim(-0.8,0.8) +
+    theme_minimal() + 
+    theme(legend.position = "none")
+```
+
+
+UMAP
+
+```{r umap_parameter_grid, message=FALSE, fig.height=12, fig.width=15}
+set.seed(1001)
+
+# Define parameter grid
+neighbors_values <- c(5, 15, 30)
+min_dist_values <- c(0.1, 0.3, 0.5)
+
+umap_plots <- list()
+
+# Loop over combinations
+for (nn in neighbors_values) {
+  for (md in min_dist_values) {
+    
+    umap_result <- umap(function_table,
+                        n_neighbors = nn,
+                        min_dist = md,
+                        metric = "euclidean")
+    
+    df_umap <- as.data.frame(umap_result) %>%
+      mutate(genome = rownames(function_table)) %>%
+      inner_join(genome_metadata, by="genome") %>%
+      rename(UMAP1 = V1, UMAP2 = V2)
+    
+    p <- ggplot(df_umap, aes(x = UMAP1, y = UMAP2,
+                             color = phylum, size = length)) +
+      geom_point(alpha = 0.7, shape=16) +
+      scale_color_manual(values = phylum_colors) +
+      theme_minimal() +
+      labs(title = paste0("UMAP (neighbors=", nn,
+                          ", min_dist=", md, ")"),
+           color="Phylum", size="Genome size") +
+      guides(color = guide_legend(override.aes = list(size = 5)))
+    
+    p <- p + theme(legend.position = "none")
+    umap_plots[[paste(nn, md, sep="_")]] <- p
+    
+  }
+}
+ggpubr::ggarrange(plotlist = umap_plots, ncol = 3, nrow = 3)
+
+
+```
+
+
+
+
+```{r function_ordination_tsne, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+# Generate the tSNE ordination
+set.seed(1001)
+tSNE_function <- Rtsne(X=function_table, dims = 2, perplexity = 10, check_duplicates = FALSE)
+
+# Plot the ordination
+function_ordination <- tSNE_function$Y %>%
+                as.data.frame() %>%
+                mutate(genome=rownames(function_table)) %>%
+                inner_join(genome_metadata, by="genome") %>%
+                rename(tSNE1="V1", tSNE2="V2") %>%
+                select(genome,phylum,tSNE1,tSNE2, length) %>%
+                ggplot(aes(x = tSNE1, y = tSNE2, color = phylum, size=length))+
+                            geom_point(shape=16, alpha=0.7) +
+                            scale_color_manual(values=phylum_colors) +
+                            theme_minimal() +
+                labs(color="Phylum", size="Genome size") +
+                guides(color = guide_legend(override.aes = list(size = 5))) # enlarge Phylum dots in legend
+
+function_ordination
+```
+
+
+
+```{r testing_perplexity}
+set.seed(1001)
+
+# Trying different perplexity values
+perplexities <- c(5, 7, 8, 9, 10, 11, 12, 13, 14)
+
+plots <- lapply(perplexities, function(p) {
+  tsne_result <- Rtsne(
+    X = function_table, 
+    dims = 2, 
+    perplexity = p, 
+    check_duplicates = FALSE
+  )
+  
+  tsne_df <- as.data.frame(tsne_result$Y) %>%
+    mutate(genome = rownames(function_table)) %>%
+    inner_join(genome_metadata, by = "genome") %>%
+    rename(tSNE1 = "V1", tSNE2 = "V2")
+  
+  ggplot(tsne_df, aes(x = tSNE1, y = tSNE2, color = phylum)) +
+    geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(values=phylum_colors)+
+    theme_minimal(base_size = 5) +  # make text larger
+    theme(legend.position = "none") +  # remove legend
+    labs(title = paste("Perplexity =", p))
+})
+
+
+ggpubr::ggarrange(plotlist = plots, ncol = 3, nrow = 3) 
+
+```
+
+<!--chapter:end:02_mag_catalogue.Rmd-->
+
+# Community composition
+
+```{r load_data_community, echo=FALSE}
+load("data/data.Rdata")
+```
+
+## Taxonomy overview 
+
+### Stacked barplot
+
+```{r taxonomy_barplot_location, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_grid(. ~ gut_location,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+
+```{r taxonomy_barplot, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~ gut_location + fox_behaviour,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_2, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~  fox_behaviour + gut_location,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_3, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~  fox_behaviour + sample_type,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+```{r taxonomy_barplot_4, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
+  left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
+  left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata
+  filter(count > 0) %>% #filter 0 counts
+  ggplot(., aes(x=sample,y=count, fill=phylum, group=phylum)) + #grouping enables keeping the same sorting of taxonomic units
+    geom_bar(stat="identity", colour="white", linewidth=0.1) + #plot stacked bars with white borders
+    scale_fill_manual(values=phylum_colors) +
+    facet_nested(. ~   sample_type+ fox_behaviour,  scales="free") + #facet per day and treatment
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x =element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=8),
+          axis.title.y = element_text(size=12),
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5, linetype = "solid", colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          strip.background = element_rect(fill = "white", color = "black"),
+          strip.text = element_text(size = 12, lineheight = 0.6)) +
+   labs(fill="Phylum",y = "Relative abundance",x="Samples")
+```
+
+
+### Phylum relative abundances
+
+```{r taxonomy_phylum_summary, warning=FALSE, comments="", message=FALSE}
+phylum_summary <- genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  pivot_longer(-genome, names_to = "sample", values_to = "count") %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  left_join(genome_metadata, by = join_by(genome == genome)) %>%
+  group_by(sample,phylum,fox_behaviour) %>%
+  summarise(relabun=sum(count))
+
+phylum_summary %>%
+    group_by(phylum) %>%
+    summarise(total_mean=mean(relabun*100, na.rm=T),
+              total_sd=sd(relabun*100, na.rm=T),
+              tame_mean=mean(relabun[fox_behaviour =="tame"]*100, na.rm=T),
+              tame_sd=sd(relabun[fox_behaviour =="tame"]*100, na.rm=T),
+              aggressive_mean=mean(relabun[fox_behaviour =="aggr"]*100, na.rm=T),
+              aggressive_sd=sd(relabun[fox_behaviour=="aggr"]*100, na.rm=T)) %>%
+    mutate(total=str_c(round(total_mean,2),"±",round(total_sd,2)),
+           tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
+           aggresive=str_c(round(aggressive_mean,2),"±",round(aggressive_sd,2))) %>% 
+    arrange(-total_mean) %>% 
+    select(phylum,total,tame,aggresive) %>% 
+    tt()
+```
+
+```{r taxonomy_boxplot_phylum, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+phylum_arrange <- phylum_summary %>%
+    group_by(phylum) %>%
+    summarise(mean=mean(relabun)) %>%
+    arrange(-mean) %>%
+    dplyr::select(phylum) %>%
+    pull()
+
+phylum_summary %>%
+  filter(phylum %in% phylum_arrange) %>%
+  mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+    filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=phylum, group=phylum, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[rev(phylum_arrange)]) +
+        scale_fill_manual(values=phylum_colors[-8]) +
+        geom_boxplot(alpha=0.2)+
+        geom_jitter(alpha=0.5) + 
+        facet_nested(. ~ gut_location)+ 
+        theme_minimal() + 
+        theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 10),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
+              ) +
+        labs(y="Phylum",x="Relative abundance")
+```
+
+```{r taxonomy_boxplot_phylum_behaviour, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+phylum_summary %>%
+  filter(phylum %in% phylum_arrange) %>%
+  mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
+  left_join(sample_metadata, by = join_by(sample == sample)) %>%
+    filter(relabun > 0) %>%
+  ggplot(aes(x=relabun, y=phylum, group=phylum, color=phylum, fill=phylum)) +
+  scale_color_manual(values=phylum_colors[rev(phylum_arrange)]) +
+        scale_fill_manual(values=phylum_colors[-8]) +
+        geom_boxplot(alpha=0.2)+
+        geom_jitter(alpha=0.5) + 
+        facet_nested(. ~ fox_behaviour)+ 
+        theme_minimal() + 
+        theme(legend.position="none",
+              strip.text.x = element_text(size = 14, color="black",face="bold"),
+              axis.text.x = element_text(vjust = 0.5, size = 10),
+              axis.text.y = element_text(size = 12),
+              axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+              axis.title = element_text(size = 14, face = "bold"),
+              axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
+              ) +
+        labs(y="Phylum",x="Relative abundance")
+```
+
+
+
+
+<!--chapter:end:03_community_composition.Rmd-->
+
