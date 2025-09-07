@@ -450,7 +450,9 @@ gift_pcoa_vectors <- gift_pcoa$vectors %>% #extract vectors
 
 gift_pcoa_eigenvalues <- gift_pcoa$values$Eigenvalues[c(1,2)]
 
-gift_pcoa_gifts <- cov(genome_gifts, scale(gift_pcoa_vectors)) %*% diag((gift_pcoa_eigenvalues/(nrow(genome_gifts)-1))^(-0.5)) %>%
+
+#For the black arrows: Functional group loadings
+gift_pcoa_gifts <- cov(genome_gifts, scale(gift_pcoa_vectors)) %*%   diag((gift_pcoa_eigenvalues/(nrow(genome_gifts)-1))^(-0.5)) %>%
   as.data.frame() %>% 
   rename(Axis.1=1,Axis.2=2) %>% 
   rownames_to_column(var="label") %>% 
@@ -465,7 +467,7 @@ gift_pcoa_gifts <- cov(genome_gifts, scale(gift_pcoa_vectors)) %*% diag((gift_pc
 
 ```{r pcoa_ordination_plot, message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
 set.seed(101)
-scale <- 20 # scale for vector loadings
+scale <- 20 # scale for vector loadings (to make arrows visible)
 gift_pcoa_vectors %>% 
   rownames_to_column(var="genome") %>% 
   left_join(genome_metadata, by="genome") %>%
@@ -497,7 +499,30 @@ gift_pcoa_vectors %>%
     xlim(-3,3) + 
     ylim(-2.5,2.5) +
     theme_minimal() + 
-    theme(legend.position = "none")
+    theme(legend.position = "none")+ 
+  labs(
+    x = paste0("PCoA1 (", round(gift_pcoa_rel_eigen[1]*100, 2), " %)"),
+    y = paste0("PCoA2 (", round(gift_pcoa_rel_eigen[2]*100, 2), " %)")
+  )
+```
+
+```{r arrow functions euclidean}
+arrow_functions <- gift_pcoa_gifts %>%
+  left_join(GIFT_db, by = c("label" = "Code_function")) %>%
+  group_by(label) %>%
+  summarise(
+    Axis.1 = mean(Axis.1),
+    Axis.2 = mean(Axis.2),
+    Function = first(Function),
+    Domain  = first(Domain),
+    Length  = sqrt(Axis.1^2 + Axis.2^2), # vector length
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Length))  # sort so most important arrows are first
+
+arrow_functions
+
+
 ```
 
 PCoA with Bray-Curtis (relative composition)
@@ -564,10 +589,33 @@ gift_pcoa_vectors_bray %>%
                      aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
                      segment.color = 'transparent') +
    xlim(-0.8,0.8) + 
-    ylim(-0.8,0.8) +
+    ylim(-0.5,0.5) +
     theme_minimal() + 
-    theme(legend.position = "none")
+    theme(legend.position = "none")+ 
+  labs(
+    x = paste0("PCoA1 (", round(gift_pcoa_rel_eigen[1]*100, 2), " %)"),
+    y = paste0("PCoA2 (", round(gift_pcoa_rel_eigen[2]*100, 2), " %)")
+  )
 ```
+
+```{r arrow functions bray}
+arrow_functions_bray <- gift_pcoa_gifts_bray %>%
+  left_join(GIFT_db, by = c("label" = "Code_function")) %>%
+  group_by(label) %>%
+  summarise(
+    Axis.1 = mean(Axis.1),
+    Axis.2 = mean(Axis.2),
+    Function = first(Function),
+    Domain  = first(Domain),
+    Length  = sqrt(Axis.1^2 + Axis.2^2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Length))
+
+arrow_functions_bray
+
+```
+
 
 
 UMAP
@@ -575,7 +623,7 @@ UMAP
 ```{r umap_parameter_grid, message=FALSE, fig.height=12, fig.width=15}
 set.seed(1001)
 
-# Define parameter grid
+#parameters to test
 neighbors_values <- c(5, 15, 30)
 min_dist_values <- c(0.1, 0.3, 0.5)
 
@@ -615,6 +663,41 @@ ggpubr::ggarrange(plotlist = umap_plots, ncol = 3, nrow = 3)
 
 ```
 
+```{r testing_perplexity}
+set.seed(1001)
+
+# Trying different perplexity values
+perplexities <- c(5, 7,8, 9, 10, 11, 12, 13, 15)
+
+plots <- lapply(perplexities, function(p) {
+  tsne_result <- Rtsne(
+    X = function_table, 
+    dims = 2, 
+    perplexity = p, 
+    check_duplicates = FALSE
+  )
+  
+  tsne_df <- as.data.frame(tsne_result$Y) %>%
+    mutate(genome = rownames(function_table)) %>%
+    inner_join(genome_metadata, by = "genome") %>%
+    rename(tSNE1 = "V1", tSNE2 = "V2")
+  
+  ggplot(tsne_df, aes(x = tSNE1, y = tSNE2, color = phylum)) +
+    geom_point(alpha = 0.7, size = 2) +
+    scale_color_manual(values=phylum_colors)+
+    theme_minimal(base_size = 5) +  
+    theme(legend.position = "none") +  # remove legend
+    labs(title = paste("Perplexity =", p))
+})
+
+
+ggpubr::ggarrange(plotlist = plots, ncol = 3, nrow = 3) 
+
+```
+
+```{r rows in function table}
+nrow(function_table)
+```
 
 
 
@@ -642,34 +725,3 @@ function_ordination
 
 
 
-```{r testing_perplexity}
-set.seed(1001)
-
-# Trying different perplexity values
-perplexities <- c(5, 7, 8, 9, 10, 11, 12, 13, 14)
-
-plots <- lapply(perplexities, function(p) {
-  tsne_result <- Rtsne(
-    X = function_table, 
-    dims = 2, 
-    perplexity = p, 
-    check_duplicates = FALSE
-  )
-  
-  tsne_df <- as.data.frame(tsne_result$Y) %>%
-    mutate(genome = rownames(function_table)) %>%
-    inner_join(genome_metadata, by = "genome") %>%
-    rename(tSNE1 = "V1", tSNE2 = "V2")
-  
-  ggplot(tsne_df, aes(x = tSNE1, y = tSNE2, color = phylum)) +
-    geom_point(alpha = 0.7, size = 2) +
-    scale_color_manual(values=phylum_colors)+
-    theme_minimal(base_size = 5) +  # make text larger
-    theme(legend.position = "none") +  # remove legend
-    labs(title = paste("Perplexity =", p))
-})
-
-
-ggpubr::ggarrange(plotlist = plots, ncol = 3, nrow = 3) 
-
-```

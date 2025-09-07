@@ -386,6 +386,10 @@ genus_summary %>%
 ```{r core_mag_upset, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
 library(UpSetR)
 
+genome_counts_rel <- genome_counts_filt %>%
+  mutate_at(vars(-genome),~./sum(.)) %>%
+  column_to_rownames(., "genome")
+
 #Presence/absence
 genome_counts_rel_pa <- (genome_counts_rel > 0) * 1
 
