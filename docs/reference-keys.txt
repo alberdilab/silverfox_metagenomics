@@ -19,6 +19,9 @@ transform-reads-into-genome-counts
 distill-annotations-into-gifts
 prepare-color-scheme
 wrap-working-objects
+data-statistics
+sequencing-reads-statistics
+dna-fractions
 mag-catalogue
 genome-phylogeny
 taxonomy-overview
