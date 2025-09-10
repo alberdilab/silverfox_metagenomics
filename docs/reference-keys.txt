@@ -40,3 +40,10 @@ phylum-relative-abundances
 family
 genus
 core-microbiota
+alpha-diversity
+summary-table
+aggressive-vs-tame
+shapiro-test
+plots
+captive-bred-pre-grass-vs-post-grass
+plots-1
