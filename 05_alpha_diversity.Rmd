@@ -5,7 +5,7 @@ load("data/data.Rdata")
 ```
 
 Colours (change later- place in data preparation)
-```{r}
+```{r behaviour colors for now}
 fox_behaviour_colors <- c("#bd70ae","#949293", "#32CD32")  
 ```
 

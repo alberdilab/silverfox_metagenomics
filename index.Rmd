@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This webbook contains all the code used for data analysis in study of gut microbiomes of newts across ponds included in a restoration plan.
+This webbook contains all the code used for data analysis in study of gut microbiomes of Belyayev tame and aggressive silverfoxes.
 
 ## Prepare the R environment
 

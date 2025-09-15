@@ -8,7 +8,7 @@ load("data/data.Rdata")
 
 ### Sequencing reads statistics
 
-```{r}
+```{r load preprocessing data}
 preprocessing <- read_tsv("data/preprocessing.tsv")
 ```
 
