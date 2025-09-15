@@ -442,8 +442,8 @@ mag_prevalence_location %>%
   ggplot(aes(x=sample_type,y=presence, color=sample_type, fill=sample_type)) +
     geom_boxplot() +
     geom_jitter() +
-    scale_color_manual(values=origin_colors) +
-    scale_fill_manual(values=str_c(origin_colors,"50")) +
+    scale_color_manual(values=behaviour_colors) +
+    scale_fill_manual(values=str_c(behaviour_colors,"50")) +
     theme_minimal()
 ```
 
@@ -470,11 +470,13 @@ wilcox.test(presence ~ fox_behaviour, data=mag_prevalence_location)  %>%
 ```
 
 ```{r core_mag_behaviour_boxplot, warning=FALSE, comments="", message=FALSE}
+behaviour_colors <- c( "#d62728", "#1f77b4","#2ca02c")
+
 mag_prevalence_location %>% 
   ggplot(aes(x=fox_behaviour,y=presence, color=fox_behaviour, fill=fox_behaviour)) +
     geom_boxplot() +
     geom_jitter() +
-    scale_color_manual(values=origin_colors) +
-    scale_fill_manual(values=str_c(origin_colors,"50")) +
+    scale_color_manual(values=behaviour_colors) +
+    scale_fill_manual(values=str_c(behaviour_colors,"50")) +
     theme_minimal()
 ```

@@ -21,6 +21,7 @@ prepare-color-scheme
 wrap-working-objects
 data-statistics
 sequencing-reads-statistics
+loading-data
 dna-fractions
 mag-catalogue
 genome-phylogeny

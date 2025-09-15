@@ -4,15 +4,12 @@
 load("data/data.Rdata")
 ```
 
-Colours (change later- place in data preparation)
-```{r behaviour colors for now}
-fox_behaviour_colors <- c("#bd70ae","#949293", "#32CD32")  
-```
-
 
 ## Summary table
 
 ```{r alpha_div, comment="", message=FALSE, warning=FALSE}
+behaviour_colors <- c( "#d62728", "#1f77b4","#2ca02c")
+
 # Calculate Hill numbers
 richness <- genome_counts_filt %>%
   column_to_rownames(var = "genome") %>%
@@ -152,11 +149,11 @@ plot1 <- alpha_div %>%
   left_join(., sample_metadata, by = join_by(sample == sample)) %>%
   filter(!fox_behaviour =="unsel") %>%
   filter(metric=="richness") %>%
-      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
+      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color= fox_behaviour, fill=fox_behaviour)) +
       geom_jitter(width = 0.2, show.legend = FALSE) +
       geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
   scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame")) +
     stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(850), label.x = c(1.5))+
 coord_cartesian(xlim = c(1, NA)) +
@@ -179,8 +176,8 @@ plot2 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors[-2])+
-  scale_fill_manual(values=fox_behaviour_colors[-2]) +
+  scale_color_manual(values=behaviour_colors[-2])+
+  scale_fill_manual(values=behaviour_colors[-2]) +
   scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame")) +
   stat_compare_means(method = "wilcox.test",show.legend = F, size = 3, label.y = c(150), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
@@ -204,8 +201,8 @@ plot3 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
   scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame")) +
   stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(11), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
@@ -228,8 +225,8 @@ plot4 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
   scale_x_discrete(labels=c("aggr" = "aggr", "tame" = "Captive-bred")) +
   stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
@@ -283,8 +280,8 @@ plot1 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
 #  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
   theme_classic() +
@@ -306,8 +303,8 @@ plot2 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
 #  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
   coord_cartesian(ylim = c(0, 150)) +
@@ -330,8 +327,8 @@ plot3 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
 #  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
   theme_classic() +
@@ -353,8 +350,8 @@ plot4 <- alpha_div %>%
   ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
   geom_jitter(width = 0.2, show.legend = FALSE) +
   geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=fox_behaviour_colors)+
-  scale_fill_manual(values=fox_behaviour_colors) +
+  scale_color_manual(values=behaviour_colors)+
+  scale_fill_manual(values=behaviour_colors) +
 #  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
   coord_cartesian(xlim = c(1, NA)) +
   theme_classic() +

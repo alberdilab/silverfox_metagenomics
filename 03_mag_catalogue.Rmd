@@ -68,6 +68,19 @@ circular_tree <-  circular_tree +
 circular_tree %>% open_tree(30) %>% rotate_tree(90)
 ```
 
+Investigating large genome MAG:
+```{r large_genome}
+large_genome_mag <- genome_metadata %>% 
+  arrange(desc(size)) %>% 
+  mutate(size_Mb = size /1000000)%>%
+  select(genus, size_Mb ,msa_percent, completeness, contamination, score) 
+  
+
+head(large_genome_mag)
+```
+Paraclostridium species tend to have genome sizes of 2.9-3.6Mb. This MAG seems to have lower msa_percent, is this relevant?
+
+
 
 
 Circular tree with genome presence/absence in different sample locations and fox behaviour
@@ -177,37 +190,25 @@ circular_tree <- gheatmap(circular_tree, phylum_heatmap, offset=0, width=0.05, c
 
 # Add F_colon ring
 circular_tree <- gheatmap(circular_tree, f_colon_heatmap, offset=0.2, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values = c("absent" = "#ffffff", "present" = "#3D5C61")) +
+        scale_fill_manual(values = c("absent" = "#ffffff", "present" = "#d6604d")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
 # Add M_colon ring
-circular_tree <- gheatmap(circular_tree, m_colon_heatmap, offset=0.3, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#41B6C0")) +
+circular_tree <- gheatmap(circular_tree, m_colon_heatmap, offset=0.4, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#542788")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
 # Add D_ileum ring
-circular_tree <- gheatmap(circular_tree, d_ileum_heatmap, offset=0.4, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#90C8C5")) +
+circular_tree <- gheatmap(circular_tree, d_ileum_heatmap, offset=0.3, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#fdb863")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
 # Add K_ileum ring
 circular_tree <- gheatmap(circular_tree, k_ileum_heatmap, offset=0.5, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("absent" =  "#ffffff", "present" = "#E5D388")) +
-        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
-        new_scale_fill()
-
-# Add Gut content ring
-circular_tree <- gheatmap(circular_tree, gut_content_heatmap, offset=0.7, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("absent" ="#ffffff","present" = "#BFA366")) +
-        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
-        new_scale_fill()
-
-# Add Gut tissue ring
-circular_tree <- gheatmap(circular_tree, gut_tissue_heatmap, offset=0.8, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#6E5244")) +
+        scale_fill_manual(values=c("absent" =  "#ffffff", "present" = "#bb99d8")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
@@ -221,21 +222,28 @@ circular_tree <-  circular_tree +
              data=prevalence_data,
              geom=geom_bar,
              mapping = aes(x=prevalence, y=genome),
-                 offset = 0.5,
+                 offset = 0.3,
                  orientation="y",
          stat="identity")
 
 # Add tame ring
-circular_tree <- gheatmap(circular_tree, tame_heatmap, offset=1.4, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#bd70ae")) +
+circular_tree <- gheatmap(circular_tree, tame_heatmap, offset=1, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#1f77b4")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
 # Add aggressive ring
-circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.5, width=0.05, colnames=FALSE) +
-        scale_fill_manual(values=c("#ffffff","#949293")) +
+circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.2, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#d62728")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
+
+# Add aggressive ring
+circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.3, width=0.05, colnames=FALSE) +
+        scale_fill_manual(values=c("#ffffff","#2ca02c")) +
+        theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
+        new_scale_fill()
+
 
 # Add text
 circular_tree <-  circular_tree +

@@ -1,12 +1,12 @@
 # Data statistics
 
-##Microbiota
+## Sequencing reads statistics
 
 ```{r load_data_stats}
 load("data/data.Rdata")
 ```
 
-### Sequencing reads statistics
+### Loading data
 
 ```{r load preprocessing data}
 preprocessing <- read_tsv("data/preprocessing.tsv")
@@ -59,19 +59,89 @@ sequence_fractions %>%
 
 
 ```{r dna_fractions_plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
-sequence_fractions %>%
+sequence_fractions_plot <- sequence_fractions %>%
 	pivot_longer(!sample, names_to = "fraction", values_to = "value") %>%
 	mutate(value = value / 1000000000) %>%
-	mutate(fraction = factor(fraction, levels = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"))) %>%
+	mutate(fraction = factor(fraction, levels = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"))) 
   
-	ggplot(., aes(x = sample, y = value, fill=fraction)) +
-	    geom_bar(position="stack", stat = "identity") +
-      scale_fill_manual(name="Sequence type",
-                    breaks=c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
-                    labels=c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
-                    values=c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c"))+
-	    labs(x = "Samples", y = "Amount of data (GB)") +
-	    theme_classic() +
-	    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size=6),legend.position = "bottom")
+ggplot(sequence_fractions_plot, aes(x = sample, y = value, fill=fraction)) +
+    geom_bar(position="stack", stat = "identity") +
+    scale_fill_manual(name="Sequence type",
+                  breaks=c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
+                  labels=c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
+                  values=c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c"))+
+    labs(x = "Samples", y = "Amount of data (GB)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size=6),legend.position = "bottom")
+```
+
+
+```{r dna_fractions_plot_sample_type, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+sequence_fractions_type <- sequence_fractions_plot %>%
+  left_join(sample_metadata) 
+
+ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(name = "Sequence type",
+                      breaks = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
+                      labels = c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
+                      values = c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c")) +
+    labs(x = "Samples", y = "Amount of data (GB)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+          legend.position = "bottom") +
+    facet_wrap(~ sample_type, scales = "free_x", nrow = 1)
+    
+```
+
+
+
+```{r dna_fractions_plot_gut_location, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(name = "Sequence type",
+                      breaks = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
+                      labels = c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
+                      values = c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c")) +
+    labs(x = "Samples", y = "Amount of data (GB)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+          legend.position = "bottom") +
+    facet_wrap(~ gut_location, scales = "free_x", nrow = 1)
+    
+```
+
+
+```{r dna_fractions_plot_sample_types, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(name = "Sequence type",
+                      breaks = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
+                      labels = c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
+                      values = c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c")) +
+       labs(x = "Samples", y = "Amount of data (GB)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+          legend.position = "bottom") +
+    facet_nested(~ sample_type + gut_location,
+                 scales = "free_x", space = "free_x")
+
+```
+
+
+
+```{r dna_fractions_plot_fox_behaviour, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
+ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(name = "Sequence type",
+                      breaks = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"),
+                      labels = c("Low quality","Mapped to host","Unmapped","Mapped to MAGs"),
+                      values = c("#CCCCCC", "#bcdee1", "#d8b8a3","#93655c")) +
+    labs(x = "Samples", y = "Amount of data (GB)") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+          legend.position = "bottom") +
+    facet_wrap(~ fox_behaviour, scales = "free_x", nrow = 1)
+    
 ```
 

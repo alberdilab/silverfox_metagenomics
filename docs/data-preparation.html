@@ -2014,8 +2014,11 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 </ul></li>
 <li class="chapter" data-level="3" data-path="data-statistics.html"><a href="data-statistics.html"><i class="fa fa-check"></i><b>3</b> Data statistics</a>
 <ul>
-<li class="chapter" data-level="3.0.1" data-path="data-statistics.html"><a href="data-statistics.html#sequencing-reads-statistics"><i class="fa fa-check"></i><b>3.0.1</b> Sequencing reads statistics</a></li>
-<li class="chapter" data-level="3.0.2" data-path="data-statistics.html"><a href="data-statistics.html#dna-fractions"><i class="fa fa-check"></i><b>3.0.2</b> DNA fractions</a></li>
+<li class="chapter" data-level="3.1" data-path="data-statistics.html"><a href="data-statistics.html#sequencing-reads-statistics"><i class="fa fa-check"></i><b>3.1</b> Sequencing reads statistics</a>
+<ul>
+<li class="chapter" data-level="3.1.1" data-path="data-statistics.html"><a href="data-statistics.html#loading-data"><i class="fa fa-check"></i><b>3.1.1</b> Loading data</a></li>
+<li class="chapter" data-level="3.1.2" data-path="data-statistics.html"><a href="data-statistics.html#dna-fractions"><i class="fa fa-check"></i><b>3.1.2</b> DNA fractions</a></li>
+</ul></li>
 </ul></li>
 <li class="chapter" data-level="4" data-path="mag-catalogue.html"><a href="mag-catalogue.html"><i class="fa fa-check"></i><b>4</b> MAG catalogue</a>
 <ul>
@@ -2192,9 +2195,9 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <span id="cb16-7"><a href="data-preparation.html#cb16-7" tabindex="-1"></a>    <span class="fu">arrange</span>(phylum) <span class="sc">%&gt;%</span></span>
 <span id="cb16-8"><a href="data-preparation.html#cb16-8" tabindex="-1"></a>    <span class="fu">pull</span>(colors, <span class="at">name=</span>phylum)</span>
 <span id="cb16-9"><a href="data-preparation.html#cb16-9" tabindex="-1"></a></span>
-<span id="cb16-10"><a href="data-preparation.html#cb16-10" tabindex="-1"></a>location_colors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&#39;#3D5C61&#39;</span>,<span class="st">&#39;#41B6C0&#39;</span>,<span class="st">&#39;#90C8C5&#39;</span>,<span class="st">&#39;#E5D388&#39;</span>,<span class="st">&#39;#BFA366&#39;</span>,<span class="st">&#39;#6E5244&#39;</span>)</span>
+<span id="cb16-10"><a href="data-preparation.html#cb16-10" tabindex="-1"></a>location_colors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&#39;#9467bd&#39;</span>,<span class="st">&#39;#7b3294&#39;</span>,<span class="st">&#39;#ff7f0e&#39;</span>,<span class="st">&#39;#e66101&#39;</span>,<span class="st">&#39;#BFA366&#39;</span>,<span class="st">&#39;#6E5244&#39;</span>)</span>
 <span id="cb16-11"><a href="data-preparation.html#cb16-11" tabindex="-1"></a></span>
-<span id="cb16-12"><a href="data-preparation.html#cb16-12" tabindex="-1"></a>origin_colors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;#bd70ae&quot;</span>,<span class="st">&quot;#949293&quot;</span>)</span></code></pre></div>
+<span id="cb16-12"><a href="data-preparation.html#cb16-12" tabindex="-1"></a>behaviour_colors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;#1f77b4&quot;</span>, <span class="st">&quot;#d62728&quot;</span>, <span class="st">&quot;#2ca02c&quot;</span>)</span></code></pre></div>
 </div>
 <div id="wrap-working-objects" class="section level2 hasAnchor" number="2.4">
 <h2><span class="header-section-number">2.4</span> Wrap working objects<a href="data-preparation.html#wrap-working-objects" class="anchor-section" aria-label="Anchor link to header"></a></h2>
@@ -2209,7 +2212,7 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <span id="cb17-8"><a href="data-preparation.html#cb17-8" tabindex="-1"></a>     genome_gifts, </span>
 <span id="cb17-9"><a href="data-preparation.html#cb17-9" tabindex="-1"></a>     phylum_colors,</span>
 <span id="cb17-10"><a href="data-preparation.html#cb17-10" tabindex="-1"></a>     location_colors,</span>
-<span id="cb17-11"><a href="data-preparation.html#cb17-11" tabindex="-1"></a>     origin_colors,</span>
+<span id="cb17-11"><a href="data-preparation.html#cb17-11" tabindex="-1"></a>     behaviour_colors,</span>
 <span id="cb17-12"><a href="data-preparation.html#cb17-12" tabindex="-1"></a>     <span class="at">file =</span> <span class="st">&quot;data/data.Rdata&quot;</span>)</span></code></pre></div>
 
 </div>

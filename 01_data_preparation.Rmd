@@ -151,9 +151,9 @@ phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI
     arrange(phylum) %>%
     pull(colors, name=phylum)
 
-location_colors <- c('#3D5C61','#41B6C0','#90C8C5','#E5D388','#BFA366','#6E5244')
+location_colors <- c('#9467bd','#7b3294','#ff7f0e','#e66101','#BFA366','#6E5244')
 
-origin_colors <- c("#bd70ae","#949293")
+behaviour_colors <- c("#1f77b4", "#d62728", "#2ca02c")
 ```
 
 ## Wrap working objects
@@ -171,7 +171,7 @@ save(sample_metadata,
      genome_gifts, 
      phylum_colors,
      location_colors,
-     origin_colors,
+     behaviour_colors,
      file = "data/data.Rdata")
 ```
 
