@@ -175,6 +175,15 @@ aggressive_heatmap <- genome_counts_filt  %>%
   group_by(genome) %>% 
   summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
   column_to_rownames(var="genome")
+
+# Generate unselected heatmap
+unsel_heatmap <- genome_counts_filt  %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>% 
+  filter(fox_behaviour=="unsel") %>% 
+  group_by(genome) %>% 
+  summarise(presence=ifelse(sum(abundance)>0,"present","absent")) %>% 
+  column_to_rownames(var="genome")
 ```
 
 ```{r genome_phylogeny_plot, message=FALSE, warning=FALSE, fig.height=10, fig.width=10, fig.fullwidth=TRUE}
@@ -222,24 +231,24 @@ circular_tree <-  circular_tree +
              data=prevalence_data,
              geom=geom_bar,
              mapping = aes(x=prevalence, y=genome),
-                 offset = 0.3,
+                 offset = 0.4,
                  orientation="y",
          stat="identity")
 
 # Add tame ring
-circular_tree <- gheatmap(circular_tree, tame_heatmap, offset=1, width=0.05, colnames=FALSE) +
+circular_tree <- gheatmap(circular_tree, tame_heatmap, offset=1.2, width=0.05, colnames=FALSE) +
         scale_fill_manual(values=c("#ffffff","#1f77b4")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
 # Add aggressive ring
-circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.2, width=0.05, colnames=FALSE) +
+circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.3, width=0.05, colnames=FALSE) +
         scale_fill_manual(values=c("#ffffff","#d62728")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()
 
-# Add aggressive ring
-circular_tree <- gheatmap(circular_tree, aggressive_heatmap, offset=1.3, width=0.05, colnames=FALSE) +
+# Add unselected ring
+circular_tree <- gheatmap(circular_tree, unsel_heatmap, offset=1.4, width=0.05, colnames=FALSE) +
         scale_fill_manual(values=c("#ffffff","#2ca02c")) +
         theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0), panel.margin = margin(0, 0, 0, 0)) +
         new_scale_fill()

@@ -153,7 +153,11 @@ phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI
 
 location_colors <- c('#9467bd','#7b3294','#ff7f0e','#e66101','#BFA366','#6E5244')
 
-behaviour_colors <- c("#1f77b4", "#d62728", "#2ca02c")
+behaviour_colors <- c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c"   
+)
 ```
 
 ## Wrap working objects

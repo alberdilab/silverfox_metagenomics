@@ -46,5 +46,7 @@ summary-table
 aggressive-vs-tame
 shapiro-test
 plots
-captive-bred-pre-grass-vs-post-grass
+tame-vs-unselected
 plots-1
+aggressive-vs-unselected
+plots-2
