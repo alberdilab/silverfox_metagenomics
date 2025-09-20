@@ -1,0 +1,146 @@
+# Differential abundance analysis
+
+## Load the data
+```{r load_data_mag_filtdamr_diffe, comment="", message=FALSE, warning=FALSE}
+load("data/data.Rdata")
+
+genome_counts_filt <- genome_counts_filt %>%
+  select(one_of(c("genome",sample_metadata$sample))) %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0))
+
+sample_metadata <- sample_metadata %>%
+  filter(sample %in% colnames(genome_counts_filt))
+```
+
+```{r phyloseq_gut, comment="", message=FALSE, warning=FALSE}
+# Reorder levels: set "unsel" as reference
+sample_metadata$fox_behaviour <- factor(
+  sample_metadata$fox_behaviour,
+  levels = c("unsel", "aggr", "tame")  
+)
+
+#Phyloseq object
+count_phy <- genome_counts_filt %>%
+  column_to_rownames(var="genome")%>%
+  otu_table(., taxa_are_rows=T)
+
+sample_info_tab_phy <- sample_metadata%>%
+  column_to_rownames(var="sample")%>%
+  sample_data()
+
+TAX <- genome_metadata%>%
+  column_to_rownames(var="genome")%>%
+  select(1:7)%>%
+  as.matrix()%>%
+  tax_table()
+tree <- phy_tree(genome_tree)
+
+physeq_all = phyloseq(count_phy, TAX, sample_info_tab_phy, tree)
+```
+
+
+```{r ancombc, comment="", message=FALSE, warning=FALSE}
+set.seed(1234) #set seed for reproducibility
+ancom_mag_gut = ancombc2(data = physeq_all, 
+                  assay_name = "counts", 
+                  tax_level = NULL,
+                  fix_formula = "fox_behaviour + gut_location",
+                  p_adj_method = "holm", 
+                  pseudo_sens = TRUE,
+                  prv_cut =0, 
+                  lib_cut = 0, 
+                  s0_perc = 0.05,
+                  group = "fox_behaviour", 
+                  struc_zero = TRUE, 
+                  neg_lb = FALSE,
+                  alpha = 0.05, 
+                  n_cl = 2, 
+                  verbose = TRUE,
+                  global = FALSE, 
+                  pairwise = FALSE, 
+                  dunnet = FALSE, 
+                  trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100), 
+                  trend_control = NULL)
+
+```
+
+
+```{r ancom_rand1_gut, comment="", message=FALSE, warning=FALSE}
+taxonomy <- data.frame(physeq_all@tax_table) %>%
+  rownames_to_column(., "taxon")%>%
+  mutate_at(vars(order, phylum, family, genus), ~ str_replace(., "[dpcofgs]__", ""))
+
+ancom_mag_gut_table <- ancom_mag_gut$res %>%
+  dplyr::select(taxon, lfc_fox_behaviouraggr, p_fox_behaviouraggr) %>%
+  filter( p_fox_behaviouraggr < 0.05) %>%
+  dplyr::arrange( p_fox_behaviouraggr) %>%
+  merge(., taxonomy, by="taxon") %>%
+  rename(genome=taxon) %>% 
+  mutate_at(vars(phylum, genus), ~ str_replace(., "[dpcofgs]__", ""))%>%
+  dplyr::arrange(lfc_fox_behaviouraggr)
+
+colors_alphabetic <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+  mutate_at(vars(phylum), ~ str_replace(., "[dpcofgs]__", ""))  %>%
+  right_join(taxonomy, by=join_by(phylum == phylum)) %>%
+  dplyr::select(phylum, colors) %>%
+  mutate(colors = str_c(colors, "80"))  %>% #add 80% alpha
+	unique() %>%
+	dplyr::arrange(phylum)
+
+tax_table <- as.data.frame(unique(ancom_mag_gut_table$phylum))
+  
+colnames(tax_table)[1] <- "phylum"
+tax_color <- merge(tax_table, colors_alphabetic, by="phylum")%>%
+	dplyr::arrange(phylum) %>%
+	dplyr::select(colors) %>%
+	pull()
+```
+
+```{r ancombc_rand_plot_mag_gut, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
+ancom_mag_gut_table %>%
+      mutate(genome=factor(genome,levels=ancom_mag_gut_table$genome)) %>%
+ggplot(aes(x=lfc_fox_behaviouraggr, y=forcats::fct_reorder(genome,lfc_fox_behaviouraggr), fill=phylum)) + #forcats::fct_rev()
+  geom_col() + 
+  scale_fill_manual(values=tax_color) + 
+  geom_hline(yintercept=0) + 
+#  coord_flip()+
+  theme(panel.background = element_blank(),
+        axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+        axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 14, face = "bold"),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14, face = "bold"),
+        legend.position = "right", legend.box = "vertical")+
+  xlab("log2FoldChange") + 
+  ylab("Species")+
+  guides(fill=guide_legend(title="Phylum"))
+```
+
+```{r ancom_rand_volcano_mag_gut, comment="", message=FALSE, warning=FALSE}
+phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
+    right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
+    arrange(match(genome, genome_tree$tip.label)) %>%
+    select(phylum, colors) %>%
+    unique() %>%
+    arrange(phylum) %>%
+    pull(colors, name=phylum)
+
+#pdf("figures/different_species_StrucZero_new_violin.pdf",width=12, height=6)
+ancom_mag_gut$res %>%
+  dplyr::select(genome=taxon, lfc_fox_behaviouraggr, p_fox_behaviouraggr) %>%
+  left_join(genome_metadata, by = join_by(genome == genome)) %>%
+  mutate(phylum = ifelse(p_fox_behaviouraggr < 0.05, phylum, NA)) %>%
+  ggplot(., aes(x = lfc_fox_behaviouraggr, y = -log(p_fox_behaviouraggr), color = phylum)) +
+  geom_point(size=3, show.legend = FALSE) +
+  #xlim(c(-10,4)) +
+  scale_color_manual(values = phylum_colors) +
+  labs(color = "Significant phylum", x = "Log-fold difference between sample types", y = "-log(p-value)") +
+  theme_classic()
+#dev.off()
+```

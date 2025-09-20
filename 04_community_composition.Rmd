@@ -3,6 +3,13 @@
 ```{r load_data_community, echo=FALSE}
 load("data/data.Rdata")
 ```
+```{r behaviour colors}
+behaviour_colors <- c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c"   
+)
+```
 
 ## Taxonomy overview 
 
@@ -36,7 +43,7 @@ genome_counts_filt %>%
 
 ```{r taxonomy_barplot, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
 genome_counts_filt %>%
-  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS nornalisation
+  mutate_at(vars(-genome),~./sum(.)) %>% #apply TSS normalisation
   pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
   left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
   left_join(., sample_metadata, by = join_by(sample == sample)) %>% #append sample metadata

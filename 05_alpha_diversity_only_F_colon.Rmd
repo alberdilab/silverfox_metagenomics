@@ -518,6 +518,8 @@ grid.arrange(arrangeGrob(plot1,plot2,plot3, plot4, ncol = 2))
 grid.arrange(arrangeGrob(plot2,plot3))
 ```
 
+
+
 ```{r Testing 3 at once_2}
 alpha_long <- alpha_div %>%
   pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
@@ -526,6 +528,7 @@ alpha_long <- alpha_div %>%
 # Shapiro–Wilk test (normality per group and metric)
 shapiro_results <- alpha_long %>%
   group_by(metric, fox_behaviour) %>%
+  filter(n() >= 3) %>%   # Only keep groups with >3 samples
   shapiro_test(value)
 
 # Levene’s test (variance homogeneity across groups, per metric)
