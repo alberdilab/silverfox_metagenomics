@@ -1,0 +1,351 @@
+# Beta diversity
+
+```{r load_data_beta_diversity}
+load("data/data.Rdata")
+
+behaviour_colors <- c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c"   
+)
+```
+
+```{r prepare sample_metadata}
+sample_metadata <- sample_metadata %>%
+  filter(sample %in% colnames(genome_counts_filt))
+```
+
+
+```{r beta_div, comment="", message=FALSE, warning=FALSE, eval=FALSE}
+beta_q0n <- genome_counts_filt %>% 
+  column_to_rownames(., "genome") %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0)) %>%
+  hillpair(., q = 0)
+
+beta_q1n <- genome_counts_filt %>%
+  column_to_rownames(., "genome") %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0)) %>%
+  hillpair(., q = 1)
+
+genome_counts_filt_beta <- genome_counts_filt %>%
+  column_to_rownames(., "genome") %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0))%>%
+  rownames_to_column(., "genome")
+
+genome_tree <- keep.tip(genome_tree, tip=genome_counts_filt_beta$genome)
+beta_q1p <- genome_counts_filt %>%
+  column_to_rownames(., "genome") %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0)) %>%
+  hillpair(., q = 1, tree = genome_tree)
+
+genome_gifts1 <- genome_gifts[genome_counts_filt_beta$genome,]
+genome_gifts1 <- genome_gifts1[, colSums(genome_gifts1 != 0) > 0]
+
+dist <- genome_gifts1 %>%
+  to.elements(., GIFT_db) %>%
+  traits2dist(., method = "gower")
+
+beta_q1f <- genome_counts_filt %>%
+  column_to_rownames(., "genome") %>%
+  filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
+  select_if(~!all(. == 0)) %>%
+  hillpair(., q = 1, dist = dist)
+```
+
+```{r save_beta, comment="", message=FALSE,echo=FALSE,warning=FALSE, eval=FALSE}
+save(beta_q0n, 
+     beta_q1n, 
+     beta_q1p, 
+     beta_q1f, 
+     file = "data/beta.Rdata")
+```
+
+```{r load beta data}
+set.seed(2024)
+load("data/beta.Rdata")
+```
+
+### Permanova
+
+```{r permanova, comment="", message=FALSE, warning=FALSE}
+#Richness
+
+betadisper(beta_q0n$S, sample_metadata$fox_behaviour) %>% permutest(.) 
+
+adonis2(beta_q0n$S ~ fox_behaviour+gut_location,
+        by="terms", 
+        data = sample_metadata %>% arrange(match(sample,labels(beta_q0n$S))), 
+        permutations = 999) %>%
+        broom::tidy() %>%
+        tt()
+```
+
+```{r permanova_neutral, comment="", message=FALSE, warning=FALSE}
+#Neutral diversity
+betadisper(beta_q1n$S, sample_metadata$fox_behaviour) %>% permutest(.) 
+adonis2(beta_q1n$S ~ fox_behaviour +gut_location,
+        by="terms",
+        data = sample_metadata %>% arrange(match(sample,labels(beta_q1n$S))), 
+        permutations = 999) %>%
+        broom::tidy() %>%
+        tt()
+```
+
+```{r pairwise_neutral, comment="", message=FALSE, warning=FALSE}
+pairwise.adonis(beta_q1n$S, sample_metadata$fox_behaviour, perm = 999)
+```
+
+```{r permanova_phylo, comment="", message=FALSE, warning=FALSE}
+#Phylogenetic diversity
+betadisper(beta_q1p$S, sample_metadata$fox_behaviour) %>% permutest(.) 
+adonis2(beta_q1p$S ~ fox_behaviour+ gut_location,
+        by="terms",
+        data = sample_metadata %>% arrange(match(sample,labels(beta_q1p$S))), 
+        permutations = 999) %>%
+        broom::tidy() %>%
+        tt()
+```
+
+```{r permanova_func, comment="", message=FALSE, warning=FALSE}
+#Functional diversity
+betadisper(beta_q1f$S, sample_metadata$fox_behaviour) %>% permutest(.) 
+adonis2(beta_q1f$S ~ fox_behaviour+ gut_location,
+        by="terms", 
+        data = sample_metadata %>% arrange(match(sample,labels(beta_q1f$S))), 
+        permutations = 999) %>%
+        broom::tidy() %>%
+        tt()
+```
+
+```{r pairwise_func, comment="", message=FALSE, warning=FALSE}
+pairwise.adonis(beta_q1f$S, sample_metadata$sample_type, perm = 999)
+```
+```{r pairwise_func_location, comment="", message=FALSE, warning=FALSE}
+pairwise.adonis(beta_q1f$S, sample_metadata$gut_location, perm = 999)
+```
+
+### NMDS
+####Richness
+```{r beta_div_nmds_richness_plot, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q0n$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(fox_behaviour) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = fox_behaviour, shape = as.factor(sample_type))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = behaviour_colors,labels=c("tame" = "Tame", "aggr" = "Aggressive", "unsel" = "Unselected")) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Fox behaviour", shape="Sample Type")+geom_text_repel(aes(label = sample), size=3)
+
+```
+
+#### Richness between gut locations
+```{r beta_div_nmds_richness_plot_location, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q0n$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(gut_location) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = gut_location, shape = as.factor(fox_behaviour))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = location_colors) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Gut location", shape="Fox Behaviour")+geom_text_repel(aes(label = sample), size=3)
+
+```
+
+#### Neutral diversity
+
+```{r beta_div_nmds_neutral_plot, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1n$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(fox_behaviour) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = fox_behaviour, shape = as.factor(sample_type))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = behaviour_colors,labels=c("tame" = "Tame", "aggr" = "Aggressive", "unsel" = "Unselected")) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Fox Behaviour", shape="Sample Type")
+```
+
+####Neutral diversity by gut location
+```{r beta_div_nmds_neutral_plot_location, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1n$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(gut_location) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = gut_location, shape = as.factor(fox_behaviour))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = location_colors) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Gut location", shape="Fox Behaviour")
+```
+
+#### Phylogenetic diversity
+
+```{r beta_div_nmds_phylo_plot, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1p$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(fox_behaviour) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = fox_behaviour, shape = as.factor(sample_type))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = behaviour_colors,labels=c("tame" = "Tame", "aggr" = "Aggressive", "unsel" = "Unselected")) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Fox Behaviour", shape="Sample Type")+geom_text_repel(aes(label = sample), size=3)
+```
+
+#### Phylogenetic diversity by gut location
+```{r beta_div_nmds_phylo_plot_location, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1p$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(gut_location) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = gut_location, shape = as.factor(fox_behaviour))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = location_colors) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Gut location", shape="Fox Behaviour")+geom_text_repel(aes(label = sample), size=3)
+```
+
+#### Functional diversity
+
+```{r beta_div_nmds_funct_plot, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1f$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(fox_behaviour) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = fox_behaviour, shape = as.factor(sample_type))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = behaviour_colors,labels=c("tame" = "Tame", "aggr" = "Aggressive", "unsel" = "Unselected")) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Fox Behaviour", shape="Sample Type")+geom_text_repel(aes(label = sample), size=3)
+```
+
+#### Functional diversity by gut location
+```{r beta_div_nmds_funct_plot_location, comment="", message=FALSE, warning=FALSE, fig.height=7, fig.width=10, fig.fullwidth=TRUE}
+beta_q1f$S %>%
+  vegan::metaMDS(., trymax = 500, k = 2, trace=0) %>%
+  vegan::scores() %>%
+  as_tibble(., rownames = "sample") %>%
+  dplyr::left_join(sample_metadata, by = join_by(sample == sample)) %>%
+  group_by(gut_location) %>%
+  mutate(x_cen = mean(NMDS1, na.rm = TRUE)) %>%
+  mutate(y_cen = mean(NMDS2, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = NMDS1, y = NMDS2, color = gut_location, shape = as.factor(fox_behaviour))) +
+  geom_point(size = 4) +
+  scale_color_manual(values = location_colors) +
+  geom_segment(aes(x = x_cen, y = y_cen, xend = NMDS1, yend = NMDS2), alpha = 0.9, show.legend = FALSE) +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.background = element_blank(),
+    axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.position = "right", legend.box = "vertical"
+    ) +
+    labs(color="Gut location", shape="Fox Behaviour")+geom_text_repel(aes(label = sample), size=3)
+```
