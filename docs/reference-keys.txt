@@ -50,7 +50,7 @@ tame-vs-unselected
 plots-1
 aggressive-vs-unselected
 plots-2
-alpha-diversity-1
+alpha-diversity-with-colon-samples-only
 summary-table-1
 aggressive-vs-tame-1
 shapiro-test-1

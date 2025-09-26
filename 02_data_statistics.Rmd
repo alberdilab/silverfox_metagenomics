@@ -11,7 +11,7 @@ load("data/data.Rdata")
 ```{r load preprocessing data}
 preprocessing <- read_tsv("data/preprocessing.tsv")
 ```
-
+Total number of bases sequenced (Gb)
 ```{r reads_stats}
 preprocessing %>% 
     summarise(Total=sum(reads_metagenomic * 150 / 1000000000) %>% round(2), 
@@ -30,7 +30,7 @@ sequence_fractions <- read_counts %>%
   summarise(mags = sum(value)) %>%
 	left_join(preprocessing, by = join_by(sample == sample)) %>%
 	select(sample,mags,bases_metagenomic,bases_host ,bases_discarded, bases_raw) %>%
-	mutate(mags_bases = mags*146) %>%
+	mutate(mags_bases = mags*146) %>% #total number of bases mapped to mags (multiplying by effective read length)
   mutate(bases_discarded_proportion = bases_discarded/bases_raw) %>%
 	mutate(lowqual_bases = ((bases_metagenomic+bases_host)/(1-bases_discarded_proportion))-(bases_metagenomic+bases_host)) %>%
 	mutate(unmapped_bases = bases_metagenomic - mags_bases) %>%

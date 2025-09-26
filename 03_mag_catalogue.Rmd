@@ -73,12 +73,12 @@ Investigating large genome MAG:
 large_genome_mag <- genome_metadata %>% 
   arrange(desc(size)) %>% 
   mutate(size_Mb = size /1000000)%>%
-  select(genus, size_Mb ,msa_percent, completeness, contamination, score) 
+  select(genus, size_Mb ,msa_percent, completeness, contamination, score, contig_count) 
   
 
 head(large_genome_mag)
 ```
-Paraclostridium species tend to have genome sizes of 2.9-3.6Mb. This MAG seems to have lower msa_percent, is this relevant?
+Paraclostridium species tend to have genome sizes of 2.9-3.6Mb. This MAG seems to have lower msa_percent, is this relevant? It also has the highest contig count.
 
 
 
@@ -256,10 +256,10 @@ circular_tree <- gheatmap(circular_tree, unsel_heatmap, offset=1.4, width=0.05, 
 
 # Add text
 circular_tree <-  circular_tree +
-        annotate('text', x=2.05, y= 0, label='Phylum', family='arial', size=3.5) +
-        annotate('text', x=2.4, y=0, label='Gut location', family='arial', size=3.5) +
-        annotate('text', x=3.1, y=0, label='Prevalence', family='arial', size=3.5) +
-        annotate('text', x= 3.5,y=0, label='Fox behaviour', family='arial', size=3.5) 
+        annotate('text', x=2.05, y= 0, label='             Phylum', family='arial', size=3.5) +
+        annotate('text', x=2.4, y=0, label='               Gut location', family='arial', size=3.5) +
+        annotate('text', x=2.9, y=0, label='             Prevalence', family='arial', size=3.5) +
+        annotate('text', x= 3.4,y=0, label='                Fox behaviour', family='arial', size=3.5) 
 
 
 #Plot circular tree
@@ -291,6 +291,7 @@ genome_metadata <- genome_metadata %>%
 genome_metadata %>%
   summarise(Average_corrected_size=mean(corrected_size))
 ```
+The average corrected size is 2.52 Mb.
 
 ## Genome quality
 

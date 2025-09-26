@@ -1,4 +1,4 @@
-# Alpha diversity
+# Alpha diversity with colon samples only
 
 ```{r load_data_alpha_2, comment="", message=FALSE, warning=FALSE}
 load("data/data.Rdata")
