@@ -70,6 +70,7 @@ sequence_fractions %>%
 
 ```{r dna_fractions_plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
 sequence_fractions_plot <- sequence_fractions %>%
+  select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
 	pivot_longer(!sample, names_to = "fraction", values_to = "value") %>%
 	mutate(value = value / 1000000000) %>%
 	mutate(fraction = factor(fraction, levels = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"))) 
@@ -155,8 +156,9 @@ ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
     
 ```
 
-### Filtering to remove samples with high host data
-```{r plot}
+# Filtering
+To remove samples with high host data or low metagenomic data
+```{r host fraction plot}
 host_data_plot <- sequence_fractions %>%
   left_join(sample_metadata) %>%
   mutate(host_fraction = bases_host / bases_raw,
@@ -193,9 +195,74 @@ samples_to_remove
 ```
 
 
+```{r MAG gb plot}
+host_data_plot <- sequence_fractions %>%
+  left_join(sample_metadata) %>%
+  mutate(host_fraction = bases_host / bases_raw,
+                bases_metagenomic_GB = bases_metagenomic / 1e9, sample = reorder(sample, -bases_metagenomic))  #reorder by decreasing bases
+
+ggplot(host_data_plot,aes(x = sample, y = bases_metagenomic_GB, fill = gut_location)) +
+  geom_col() +
+  scale_fill_manual(
+  values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8"
+  )
+)+
+  geom_hline(yintercept = 1, linetype = "dashed", color = "black")+
+  labs(y = "Metagenomic bases (Gb)", x = "Sample",
+       title = "GB of metagenomic bases per sample")+
+   theme_bw() +
+  scale_y_continuous(
+    breaks = seq(0, max(host_data_plot$bases_metagenomic_GB), by = 1)
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)  
+  )
+```
+
+
+
+
+```{r host data vs metagenomic reads plot}
+ggplot(host_data_plot, aes(x= host_fraction, y= bases_metagenomic_GB, color = gut_location))+
+   scale_color_manual(
+  values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8"
+  ))+
+  scale_y_continuous(
+    breaks = seq(0, max(host_data_plot$bases_metagenomic_GB), by = 1)
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "black")+
+  geom_vline(xintercept = 0.75, linetype = "dashed", color = "black")+
+  labs(y = "Metagenomic Bases", x = "Host fraction")+
+  geom_point()+
+  theme_bw()
+```
+
+```{r samples with low metagenomic data}
+samples_to_remove_total <- host_data_plot %>%
+  filter(bases_metagenomic_GB < 1) %>%  #remove samples with less than 1Gb of metagenomic reads
+   filter(host_fraction > 0.75) %>% #remove samples with more than 0.75 host fraction
+  pull(sample)
+
+samples_to_remove_total
+
+#Add samples to remove to the Rdata
+save(samples_to_remove_total,  file = "data.RData")
+```
+
+
 ```{r filtering and plotting again}
 host_data_filtered <- host_data_plot %>%
-  filter(!sample %in% samples_to_remove)
+  filter(!sample %in% samples_to_remove_total) %>%
+  mutate(host_fraction = bases_host / bases_raw,
+         sample = reorder(sample, -host_fraction)) 
 
 ggplot(host_data_filtered,aes(x = sample, y = host_fraction, fill = gut_location)) +
   geom_col() +
@@ -215,4 +282,6 @@ ggplot(host_data_filtered,aes(x = sample, y = host_fraction, fill = gut_location
     axis.text.x = element_text(angle = 90, hjust = 1)  
   )
 ```
+
+
 
