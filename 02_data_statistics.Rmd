@@ -23,7 +23,7 @@ preprocessing %>%
 
 ### DNA fractions
 
-```{r dna_fractions_stats}
+```{r sequence_fractions_calculation}
 sequence_fractions <- read_counts %>%
   pivot_longer(-genome, names_to = "sample", values_to = "value") %>%
   group_by(sample) %>%
@@ -34,28 +34,38 @@ sequence_fractions <- read_counts %>%
   mutate(bases_discarded_proportion = bases_discarded/bases_raw) %>%
 	mutate(lowqual_bases = ((bases_metagenomic+bases_host)/(1-bases_discarded_proportion))-(bases_metagenomic+bases_host)) %>%
 	mutate(unmapped_bases = bases_metagenomic - mags_bases) %>%
-	mutate(unmapped_bases = ifelse(unmapped_bases < 0, 0, unmapped_bases)) %>%
-	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)
+	mutate(unmapped_bases = ifelse(unmapped_bases < 0, 0, unmapped_bases)) 
+```
 
+```{r sequence_fractions_gb}
 sequence_fractions %>%
+	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   tt()
+```
 
+
+```{r dna_fractions_mean}
 #mean
 sequence_fractions %>%
+	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   summarise(across(where(is.numeric), mean, na.rm = TRUE)) %>%
   tt()
+```
+
+```{r sequence_fractions_sd}
 #SD
 sequence_fractions %>%
+	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   summarise(across(where(is.numeric), sd, na.rm = TRUE)) %>% 
   tt()
-
 ```
+
 
 
 ```{r dna_fractions_plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
@@ -143,5 +153,66 @@ ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
           legend.position = "bottom") +
     facet_wrap(~ fox_behaviour, scales = "free_x", nrow = 1)
     
+```
+
+### Filtering to remove samples with high host data
+```{r plot}
+host_data_plot <- sequence_fractions %>%
+  left_join(sample_metadata) %>%
+  mutate(host_fraction = bases_host / bases_raw,
+         sample = reorder(sample, -host_fraction))  #reorder by decreasing host_fraction
+
+ggplot(host_data_plot,aes(x = sample, y = host_fraction, fill = gut_location)) +
+  geom_col() +
+  scale_fill_manual(
+  values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8"
+  )
+)+
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "black")+
+  labs(y = "Host fraction", x = "Sample",
+       title = "Fraction of host bases per sample")+
+   theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)  
+  )
+```
+
+
+```{r samples with high host data}
+threshold <- 0.5
+
+samples_to_remove <- host_data_plot %>%
+  filter(host_fraction > threshold) %>%
+  pull(sample)
+
+samples_to_remove
+```
+
+
+```{r filtering and plotting again}
+host_data_filtered <- host_data_plot %>%
+  filter(!sample %in% samples_to_remove)
+
+ggplot(host_data_filtered,aes(x = sample, y = host_fraction, fill = gut_location)) +
+  geom_col() +
+  scale_fill_manual(
+  values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8"
+  )
+)+
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "black")+
+  labs(y = "Host fraction", x = "Sample",
+       title = "Fraction of host bases per sample")+
+   theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1)  
+  )
 ```
 

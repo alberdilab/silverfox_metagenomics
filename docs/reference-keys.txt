@@ -23,6 +23,7 @@ data-statistics
 sequencing-reads-statistics
 loading-data
 dna-fractions
+filtering-to-remove-samples-with-high-host-data
 mag-catalogue
 genome-phylogeny
 taxonomy-overview
