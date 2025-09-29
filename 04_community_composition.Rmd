@@ -26,7 +26,7 @@ tax_barplot <- genome_counts_filt %>%
 
 ```{r fitlered data according to host fraction and metagenomic bases}
 tax_barplot_filt <- genome_counts_filt %>%
-  select(-all_of(samples_to_remove))%>%
+ dplyr::select(-all_of(samples_to_remove))%>%
   mutate_at(vars(-genome), ~./sum(.)) %>% #apply TSS normalization
   pivot_longer(-genome, names_to = "sample", values_to = "count") %>% #reduce to minimum number of columns
   left_join(., genome_metadata, by = join_by(genome == genome)) %>% #append genome metadata
@@ -206,13 +206,20 @@ phylum_summary %>%
            aggresive=str_c(round(aggressive_mean,2),"±",round(aggressive_sd,2)),
            unselected =str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
     arrange(-total_mean) %>% 
-    select(phylum,total,tame,aggresive, unselected) %>% 
+   dplyr::select(phylum,total,tame,aggresive, unselected) %>% 
     tt()
 ```
 
 
 Distribution of relative abundance across samples:
 ```{r taxonomy_phylum_plot, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
+phylum_arrange <- phylum_summary %>%
+    group_by(phylum) %>%
+    summarise(mean=mean(relabun)) %>%
+    arrange(-mean) %>%
+    dplyr::select(phylum) %>%
+    pull()
+
 phylum_summary %>%
   filter(phylum %in% phylum_arrange) %>%
   mutate(phylum=factor(phylum,levels=rev(phylum_arrange))) %>%
@@ -324,7 +331,7 @@ family_summary %>%
            aggr=str_c(round(aggr_mean,2),"±",round(aggr_sd,2)),
            unsel =str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
     arrange(-total_mean) %>% 
-    select(family,total,tame,aggr, unsel) %>% 
+   dplyr::select(family,total,tame,aggr, unsel) %>% 
     tt()
 
 ```
@@ -416,7 +423,7 @@ genus_summary %>%
            aggr=str_c(round(aggr_mean,2),"±",round(aggr_sd,2)),
            unsel = str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
     arrange(-total_mean) %>% 
-    select(genus,total,tame,aggr, unsel) %>% 
+   dplyr::select(genus,total,tame,aggr, unsel) %>% 
     tt()
 ```
 
@@ -558,7 +565,7 @@ mag_prevalence_location <- genome_counts_filt  %>%
   pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
   left_join(sample_metadata,by="sample") %>% 
   mutate(presence=ifelse(abundance>0,1,0)) %>% 
-  select(genome,sample,presence,gut_location, sample_type) %>%
+ dplyr::select(genome,sample,presence,gut_location, sample_type) %>%
   group_by(genome,gut_location, sample_type) %>%
   summarise(presence=ifelse(sum(presence)>0,1,0)) %>% 
   group_by(genome,sample_type) %>%
@@ -588,7 +595,7 @@ mag_prevalence_location <- genome_counts_filt  %>%
   left_join(sample_metadata,by="sample") %>% 
   filter(!grepl("unsel", fox_behaviour))%>% #to remove the unselected foxes
   mutate(presence=ifelse(abundance>0,1,0)) %>% 
-  select(genome,sample,presence,gut_location, fox_behaviour) %>%
+ dplyr::select(genome,sample,presence,gut_location, fox_behaviour) %>%
   group_by(genome,gut_location, fox_behaviour) %>%
   summarise(presence=ifelse(sum(presence)>0,1,0)) %>% 
   group_by(genome,fox_behaviour) %>%
@@ -622,7 +629,7 @@ mag_prevalence_location_behaviour <- genome_counts_filt  %>%
   pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
   left_join(sample_metadata,by="sample") %>%
   mutate(presence=ifelse(abundance>0,1,0)) %>% 
-  select(genome,sample,presence,gut_location, fox_behaviour) %>%
+ dplyr::select(genome,sample,presence,gut_location, fox_behaviour) %>%
   group_by(genome,gut_location, fox_behaviour) %>%
   summarise(presence=ifelse(sum(presence)>0,1,0)) 
 

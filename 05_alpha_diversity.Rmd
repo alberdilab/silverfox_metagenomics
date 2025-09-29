@@ -1,6 +1,9 @@
 # Alpha diversity
 
 ```{r load_data_alpha, comment="", message=FALSE, warning=FALSE}
+detach("package:pscl", unload = TRUE)
+detach("package:MuMIn", unload = TRUE)
+detach("package:MASS", unload = TRUE)
 load("data/data.Rdata")
 ```
 
@@ -8,6 +11,7 @@ load("data/data.Rdata")
 ## Summary table
 
 ```{r alpha_div, comment="", message=FALSE, warning=FALSE}
+library(hilldiv2)
 behaviour_colors <- c(
   tame = "#1f77b4",   
   aggr = "#d62728",   
@@ -18,7 +22,8 @@ behaviour_colors <- c(
 richness <- genome_counts_filt %>%
   column_to_rownames(var = "genome") %>%
   dplyr::select(where(~ !all(. == 0))) %>%
-  hilldiv(., q = 0) %>%
+  hilldiv(., q = 0) %>%  # richness
+  as.matrix() %>%        # ensure it's a plain matrix for t()
   t() %>%
   as.data.frame() %>%
   dplyr::rename(richness = 1) %>%
@@ -27,7 +32,8 @@ richness <- genome_counts_filt %>%
 neutral <- genome_counts_filt %>%
   column_to_rownames(var = "genome") %>%
   dplyr::select(where(~ !all(. == 0))) %>%
-  hilldiv(., q = 1) %>%
+  hilldiv(., q = 1) %>%  # neutral diversity
+  as.matrix() %>%
   t() %>%
   as.data.frame() %>%
   dplyr::rename(neutral = 1) %>%
@@ -36,18 +42,19 @@ neutral <- genome_counts_filt %>%
 phylogenetic <- genome_counts_filt %>%
   column_to_rownames(var = "genome") %>%
   dplyr::select(where(~ !all(. == 0))) %>%
-  hilldiv(., q = 1, tree = genome_tree) %>%
+  hilldiv(., q = 1, tree = genome_tree) %>%  # phylogenetic diversity
+  as.matrix() %>%
   t() %>%
   as.data.frame() %>%
   dplyr::rename(phylogenetic = 1) %>%
   rownames_to_column(var = "sample")
 
-# # Aggregate basal GIFT into elements
+# Aggregate basal GIFT into elements
 genome_counts_filt <- genome_counts_filt[genome_counts_filt$genome %in% rownames(genome_gifts),]
 genome_counts_filt <- genome_counts_filt %>%
   column_to_rownames(., "genome") %>%
   filter(rowSums(. != 0, na.rm = TRUE) > 0) %>%
-  select_if(~!all(. == 0))%>%
+  dplyr::select_if(~!all(. == 0)) %>%
   rownames_to_column(., "genome")
 
 genome_gifts <- genome_gifts[rownames(genome_gifts) %in% genome_counts_filt$genome,]
@@ -61,7 +68,8 @@ functional <- genome_counts_filt %>%
   filter(genome %in% rownames(dist)) %>%
   column_to_rownames(var = "genome") %>%
   dplyr::select(where(~ !all(. == 0))) %>%
-  hilldiv(., q = 1, dist = dist) %>%
+  hilldiv(., q = 1, dist = dist) %>%  # functional diversity
+  as.matrix() %>%
   t() %>%
   as.data.frame() %>%
   dplyr::rename(functional = 1) %>%
@@ -71,12 +79,13 @@ functional <- genome_counts_filt %>%
 # Merge all metrics
 alpha_div <- richness %>%
   full_join(neutral, by = join_by(sample == sample)) %>%
-  full_join(phylogenetic, by = join_by(sample == sample))%>%
+  full_join(phylogenetic, by = join_by(sample == sample)) %>%
   full_join(functional, by = join_by(sample == sample))
+
 ```
 
 ```{r alpha_div_fox_behaviours_summary_all, comment="",echo=FALSE, message=FALSE, warning=FALSE}
-alpha_div %>%
+alpha_div_summary <- alpha_div %>%
   pivot_longer(-sample, names_to = "alpha", values_to = "value") %>%
   left_join(sample_metadata, by = join_by(sample == sample)) %>%
     group_by(alpha)%>%
@@ -92,491 +101,354 @@ alpha_div %>%
            tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
            unsel=str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
     arrange(-aggr_mean) %>% 
-    dplyr::select(alpha,aggr,tame,unsel) %>% 
+    dplyr::select(alpha,aggr,tame,unsel)
+
+alpha_div_summary %>% 
     tt()
 ```
 
-## Aggressive vs Tame
-
-### Shapiro test
-
-```{r alpha_div_shapiro, comment="", message=FALSE, warning=FALSE}
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="richness") %>% 
-  summarize(shapiro_p_value = shapiro.test(value)$p.value) %>%
-  pull(shapiro_p_value)
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="neutral") %>% 
-  summarize(shapiro_p_value = shapiro.test(value)$p.value) %>%
-  pull(shapiro_p_value)
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="phylogenetic") %>% 
-  summarize(shapiro_p_value = shapiro.test(value)$p.value) %>%
-  pull(shapiro_p_value)
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="phylogenetic") %>% 
-  summarize(var.test_p_value_phylo = var.test(value ~ fox_behaviour)$p.value) 
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="functional") %>% 
-  summarize(shapiro_p_value = shapiro.test(value)$p.value) %>%
-  pull(shapiro_p_value)
-alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="unsel") %>% 
-  filter(metric=="functional") %>% 
-  summarize(var.test_p_functional = var.test(value ~ fox_behaviour)$p.value) 
-```
-
-### Plots
-
-```{r alpha_div_boxplot, comment="",echo=FALSE, message=FALSE, warning=FALSE}
-sample_metadata$fox_behaviour <- factor(sample_metadata$fox_behaviour, levels=c("tame", "unsel", "aggr"))
-#Richness
-plot1 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(metric=="richness") %>%
-   filter(!fox_behaviour =="unsel") %>% 
-      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color= fox_behaviour, fill=fox_behaviour)) +
-      geom_jitter(width = 0.2, show.legend = FALSE) +
-      geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-  scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame", "unsel" = "Unselected")) +
-    stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(850), label.x = c(1.5))+
-coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "Origin", y = "Richness")
-
-#Neutral
-plot2 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(metric=="neutral") %>%
-   filter(!fox_behaviour =="unsel") %>% 
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-  scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame",  "unsel" = "Unselected")) +
-  stat_compare_means(method = "wilcox.test",show.legend = F, size = 3, label.y = c(150), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  coord_cartesian(ylim = c(0, 150)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "Origin", y = "Neutral")
-
-#Phylogenetic
-plot3 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(metric=="phylogenetic") %>%
-   filter(!fox_behaviour =="unsel") %>% 
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-  scale_x_discrete(labels=c("aggr" = "Aggressive", "tame" = "Tame",  "unsel" = "Unselected")) +
-  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(11), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "Origin", y = "Phylogenetic")
-
-#Functional
-plot4 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(metric=="functional") %>%
-   filter(!fox_behaviour =="unsel") %>% 
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-  scale_x_discrete(labels=c("aggr" = "Aggresive", "tame" = "Tame",  "unsel" = "Unselected")) +
-  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "Origin", y = "Functional")
-
-```
-
-```{r div_plot_together, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
-grid.arrange(arrangeGrob(plot1,plot2,plot3, plot4, ncol = 2))
-```
-```{r div_plot_2, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8, fig.fullwidth=TRUE}
-grid.arrange(arrangeGrob(plot2,plot3))
-```
 
 
-
-
-
-## Tame vs Unselected
-```{r alpha_div_fox_behaviours_summary, comment="",echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
-alpha_div %>%
+```{r alpha_div_gut_locations_summary_all, comment="",echo=FALSE, message=FALSE, warning=FALSE}
+alpha_div_summary <- alpha_div %>%
   pivot_longer(-sample, names_to = "alpha", values_to = "value") %>%
   left_join(sample_metadata, by = join_by(sample == sample)) %>%
     group_by(alpha)%>%
     summarise(
-              tame_mean=mean(value[fox_behaviour=="tame"], na.rm=T),
-              tame_sd=sd(value[fox_behaviour=="tame"], na.rm=T),
-              unsel_mean=mean(value[fox_behaviour=="unsel"], na.rm=T),
-              unsel_sd=sd(value[fox_behaviour=="unsel"], na.rm=T)) %>%
+              fcolon_mean=mean(value[gut_location=="F_colon"], na.rm=T),
+              fcolon_sd=sd(value[gut_location=="F_colon"], na.rm=T),
+              mcolon_mean=mean(value[gut_location=="M_colon"], na.rm=T),
+              mcolon_sd=sd(value[gut_location=="M_colon"], na.rm=T),
+              kileum_mean=mean(value[gut_location=="K_ileum"], na.rm=T),
+              kileum_sd=sd(value[gut_location=="K_ileum"], na.rm=T),
+              dileum_mean=mean(value[gut_location=="D_ileum"], na.rm=T),
+              dileum_sd=sd(value[gut_location=="D_ileum"], na.rm=T)) %>%
     mutate(
-           tame=str_c(round(tame_mean,2),"±",round(tame_sd,2)),
-           unsel=str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
-    arrange(-tame_mean) %>% 
-    dplyr::select(alpha,tame,unsel) %>% 
+           fcolon=str_c(round(fcolon_mean,2),"±",round(fcolon_sd,2)),
+           mcolon=str_c(round(mcolon_mean,2),"±",round(mcolon_sd,2)),
+           kileum=str_c(round(kileum_mean,2),"±",round(kileum_sd,2)),
+           dileum=str_c(round(dileum_mean,2),"±",round(dileum_sd,2))) %>% 
+    arrange(-fcolon_mean) %>% 
+    dplyr::select(alpha,fcolon, mcolon, kileum, dileum)
+
+alpha_div_summary %>% 
     tt()
 ```
 
+
+
+## By location
 ### Plots
-```{r alpha_div_tame_unsel_boxplot, comment="",echo=FALSE, message=FALSE, warning=FALSE}
-sample_metadata$fox_behaviour <- factor(sample_metadata$fox_behaviour, levels=c("tame", "unsel", "aggr"))
-#Richness
-plot1 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="aggr") %>%
-  filter(metric=="richness") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Richness")
+```{r summary_stats_alpha}
+richness_mean <- alpha_div %>%
+  left_join(sample_metadata, by = join_by(sample == sample))%>%
+  group_by(gut_location) %>%
+  dplyr::summarise_at(.vars = names(.)[2], .funs = c("Richness mean" = "mean", "Richness sd" = "sd"))
 
-#Neutral
-plot2 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="aggr") %>%
-  filter(metric=="neutral") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  coord_cartesian(ylim = c(0, 150)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Neutral")
+neutral_mean <- alpha_div %>%
+  left_join(sample_metadata, by = join_by(sample == sample))%>%
+  group_by(gut_location) %>%
+  dplyr::summarise_at(.vars = names(.)[3], .funs = c("Neutral mean" = "mean", "Neutral sd" = "sd"))
 
-#Phylogenetic
-plot3 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="aggr") %>% 
-  filter(metric=="phylogenetic") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Phylogenetic")
+phylogenetic_mean <- alpha_div %>%
+  left_join(sample_metadata, by = join_by(sample == sample))%>%
+  group_by(gut_location) %>%
+  dplyr::summarise_at(.vars = names(.)[4], .funs = c("Phylogenetic mean" = "mean", "Phylogenetic sd" = "sd"))
 
-#Functional
-plot4 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="aggr") %>%
-  filter(metric=="functional") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Functional")
-```
-```{r div_plot_tame_unsel_all, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
-grid.arrange(arrangeGrob(plot1,plot2,plot3, plot4, ncol = 2))
-```
-```{r div_tame_unsel_post2, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-grid.arrange(arrangeGrob(plot2,plot3))
+cbind(richness_mean, neutral_mean[, 2:3], phylogenetic_mean[, 2:3])%>%
+  tt()
 ```
 
+```{r gut_location_summary_plot}
+group_n <- alpha_div %>%
+  left_join(., sample_metadata, by = join_by(sample == sample))%>%
+ dplyr::select(gut_location) %>%
+  pull() %>%
+  unique() %>%
+  length()
 
-## Aggressive vs Unselected:
-
-```{r alpha_div_fox_behaviours_aggr_unsel, comment="",echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+#pdf("figures/diversity_location.pdf",width=20, height=9)
 alpha_div %>%
-  pivot_longer(-sample, names_to = "alpha", values_to = "value") %>%
-  left_join(sample_metadata, by = join_by(sample == sample)) %>%
-    group_by(alpha)%>%
-    summarise(
-              aggr_mean=mean(value[fox_behaviour=="aggr"], na.rm=T),
-              aggr_sd=sd(value[fox_behaviour=="aggr"], na.rm=T),
-              unsel_mean=mean(value[fox_behaviour=="unsel"], na.rm=T),
-              unsel_sd=sd(value[fox_behaviour=="unsel"], na.rm=T)) %>%
-    mutate(
-           aggr=str_c(round(aggr_mean,2),"±",round(aggr_sd,2)),
-           unsel=str_c(round(unsel_mean,2),"±",round(unsel_sd,2))) %>% 
-    arrange(-aggr_mean) %>% 
-    dplyr::select(alpha,aggr,unsel) %>% 
-    tt()
-```
-
-### Plots
-```{r alpha_div_aggrvsunsel_boxplot, comment="",echo=FALSE, message=FALSE, warning=FALSE}
-sample_metadata$fox_behaviour <- factor(sample_metadata$fox_behaviour, levels=c("tame", "unsel", "aggr"))
-#Richness
-plot1 <- alpha_div %>%
   pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="tame") %>%
-  filter(metric=="richness") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
+  left_join(sample_metadata, by = "sample") %>%
+  mutate(metric=factor(metric,levels=c("richness","neutral","phylogenetic","functional"))) %>%
+  ggplot(aes(y = value, x = gut_location, group=gut_location, color=gut_location, fill=gut_location)) +
+  geom_boxplot(outlier.shape = NA, show.legend = FALSE, alpha = 0.5) +
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8")) +
+  scale_fill_manual(values = c(
+    F_colon = "#d6604d",
+    M_colon = "#542788",
+    D_ileum = "#fdb863",
+    K_ileum = "#bb99d8", "50"
+  )) +
+  facet_wrap(. ~ metric, scales = "free", ncol=4) +
   coord_cartesian(xlim = c(1, NA)) +
   theme_classic() +
   theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Richness")
-
-#Neutral
-plot2 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="tame") %>%
-  filter(metric=="neutral") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  coord_cartesian(ylim = c(0, 150)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Neutral")
-
-#Phylogenetic
-plot3 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="tame") %>% 
-  filter(metric=="phylogenetic") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "t.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Phylogenetic")
-
-#Functional
-plot4 <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(., sample_metadata, by = join_by(sample == sample)) %>%
-  filter(!fox_behaviour =="tame") %>%
-  filter(metric=="functional") %>%
-  ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
-  geom_jitter(width = 0.2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=0.5,outlier.shape = NA, show.legend = FALSE) +
-  scale_color_manual(values=behaviour_colors)+
-  scale_fill_manual(values=behaviour_colors) +
-#  stat_compare_means(method = "wilcox.test", show.legend = F, size = 3, label.y = c(1.6), label.x = c(1.5))+
-  coord_cartesian(xlim = c(1, NA)) +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    panel.grid.minor.x = element_line(size = .1, color = "grey"),
-    axis.text = element_text(size=10),
-    axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
-    axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 0, l = 0))
-    )+
-  labs(x = "fox_behaviour", y = "Functional")
-```
-```{r div_plot_all_unsel_aggr, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
-grid.arrange(arrangeGrob(plot1,plot2,plot3, plot4, ncol = 2))
+    axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 12, color="black",face="bold"),
+        strip.background = element_blank(),
+        panel.grid.minor.x = element_line(size = .1, color = "grey"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12))+
+    guides(fill = guide_legend(override.aes = list(size=3)))
+#dev.off()
 ```
 
-```{r div_plot_pre_post2_unsel_aggr, comment="", echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-grid.arrange(arrangeGrob(plot2,plot3))
-```
+### Generalized linear models 
 
-```{r Testing 3 at once}
-alpha_long <- alpha_div %>%
-  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
+#### Richness
+First, we will model the richness only taking into account the gut location, as it seems to hold the greatest variance.
+
+Count data are often modeled with Poisson distribution, but this distribution assumes the mean = variance. In the case of richness, the data is usually overdispersed (variance > mean), so we use a negative binomial model.
+```{r model_rich_location, comment="", echo=FALSE, message=FALSE, warning=FALSE}
+library(MASS)
+library(MuMIn)
+library(pscl)
+
+alpha_div_meta <- alpha_div %>%
   left_join(sample_metadata, by = join_by(sample == sample))
 
-# Shapiro–Wilk test (normality per group and metric)
-shapiro_results <- alpha_long %>%
-  group_by(metric, fox_behaviour) %>%
-  shapiro_test(value)
+# Negative binomial generalized linear model with gut location only
+Modelq0_Loca <- MASS::glm.nb(richness ~ gut_location, data = alpha_div_meta,trace=TRUE)
 
-# Levene’s test (variance homogeneity across groups, per metric)
-levene_results <- alpha_long %>%
-  group_by(metric) %>%
-  levene_test(value ~ fox_behaviour)
-
-# Kruskal–Wallis test (non-parametric ANOVA alternative, 3+ groups)
-kruskal_results <- alpha_long %>%
-  group_by(metric) %>%
-  kruskal_test(value ~ fox_behaviour)
-
-# Pairwise comparisons (Dunn test with p.adjust)
-pairwise_results <- alpha_long %>%
-  group_by(metric) %>%
-  dunn_test(value ~ fox_behaviour, p.adjust.method = "bonferroni")
-
-# View results
-shapiro_results
-levene_results
-kruskal_results
-pairwise_results
-
+# To test whether gut location has a significant effect on richness, we perform ANOVA test
+#For a negative binomial it uses a likelihood ratio test
+anova(Modelq0_Loca)
 ```
-```{r Plotting all together}
-# Ensure factor order
-alpha_long <- alpha_div %>%
+The p_value (< 2.2e-16) is much lower than 0.05 , so this model strongly suggests that alpha diversity differs greatly between gut locations.
+
+```{r pseudor2}
+#how well the model fits compared to a null model
+pscl::pR2(Modelq0_Loca)
+```
+Even though gut location is highly significant, it only modestly explains richness variation on a McFadden scale
+
+
+```{r emmeans}
+#Estimated marginal means
+emmeans(Modelq0_Loca, pairwise ~ gut_location)
+```
+K_ileum has the lowest richness, F_colon the highest, and D_ileum / M_colon are intermediate.
+
+```{r modelsummary}
+summary(Modelq0_Loca)
+```
+
+#### Neutral
+In this case neutral diversity is measured with the exponential of the Shannon entropy (Hill q =1), this means that the data is likely continuous (unlike richness, which is counts), and often has a normal distribution, therefore, we can use a linear model (lm).
+```{r model_neutral, comment="", message=FALSE, warning=FALSE}
+Modelq1_Loca <- lm(formula = neutral ~ gut_location, data = alpha_div_meta) 
+anova(Modelq1_Loca)
+r.squaredGLMM(Modelq1_Loca)
+emmeans(Modelq1_Loca, pairwise ~ gut_location)
+```
+The p-value (1.22e-11) is much lower than 0.05, suggesting that gut_location significantly affects neutral diversity.
+
+R2m=  0.7045, which means that about 70% of the variation in neutral diversity is explained by gut location.
+
+F_colon has the highest neutral diversity (≈42.5).
+K_ileum has the lowest (≈1.15).
+D_ileum and M_colon are similar (≈11.3–11.5).
+
+
+#### Phylogenetic
+
+```{r model_phylo, comment="", message=FALSE, warning=FALSE}
+Modelq1p_Loca <- lm(formula = phylogenetic ~ gut_location, data = alpha_div_meta) 
+anova(Modelq1p_Loca)
+r.squaredGLMM(Modelq1p_Loca)
+emmeans(Modelq1p_Loca, pairwise ~ gut_location)
+```
+#### Functional
+
+```{r model_funct, comment="", message=FALSE, warning=FALSE}
+Modelq1F_Loca <- lm(formula = functional ~ gut_location, data = alpha_div_meta) 
+anova(Modelq1F_Loca)
+r.squaredGLMM(Modelq1F_Loca)
+emmeans(Modelq1F_Loca, pairwise ~ gut_location)
+```
+
+## By behaviour and location
+
+### Plots
+
+#### Richness
+
+```{r alpha_div_rich_boxplot, comment="", message=FALSE, warning=FALSE, fig.height=3, fig.width=10, fig.fullwidth=TRUE}
+alpha_div %>%
   pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
-  left_join(sample_metadata, by = join_by(sample == sample)) %>%
-  mutate(fox_behaviour = factor(fox_behaviour, levels = c("tame", "unsel", "aggr")))
+  left_join(sample_metadata, by = "sample") %>%
+  filter(!is.na(gut_location)) %>%
+  filter(metric=="richness") %>%
+      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+      geom_jitter(width = 0.1, alpha=0.5) +
+      scale_color_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      scale_fill_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      facet_wrap(. ~ gut_location, scales = "fixed", ncol=6) +
+      coord_cartesian(xlim = c(1, NA)) +
+      theme_classic() +
+      theme(
+        strip.background = element_blank(),
+        panel.grid.minor.x = element_line(size = .1, color = "grey"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )+ labs(title= "Richness by gut location and fox behaviour")
+```
 
-# Run Kruskal-Wallis tests per metric
-kw_results <- alpha_long %>%
-  group_by(metric) %>%
-  kruskal_test(value ~ fox_behaviour)
+#### Neutral
 
-# Build custom facet labels with p-values
-facet_labels <- kw_results %>%
-  mutate(label = paste0(metric, " (KW p=", signif(p, 3), ")")) %>%
-  select(metric, label) %>%
-  deframe()
+```{r alpha_div_neutral_boxplot, comment="", message=FALSE, warning=FALSE, fig.height=3, fig.width=10, fig.fullwidth=TRUE}
+alpha_div %>%
+  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
+  left_join(sample_metadata, by = "sample") %>%
+  filter(!is.na(gut_location)) %>%
+  filter(metric=="neutral") %>%
+      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+      geom_jitter(width = 0.1, alpha=0.5) +
+      scale_color_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      scale_fill_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      facet_wrap(. ~ gut_location, scales = "fixed", ncol=6) +
+      coord_cartesian(xlim = c(1, NA)) +
+      theme_classic() +
+      theme(
+        strip.background = element_blank(),
+        panel.grid.minor.x = element_line(size = .1, color = "grey"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )+ labs(title= "Neutral diversity by gut location and fox behaviour")
+```
 
-# Plot
-plot_all <- alpha_long %>%
-  ggplot(aes(x = fox_behaviour, y = value,
-             color = fox_behaviour, fill = fox_behaviour)) +
-  geom_jitter(width = 0.2, alpha = 0.7, size = 2, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha = 0.3, outlier.shape = NA, show.legend = FALSE) +
-  facet_wrap(~ metric, scales = "free_y", ncol = 2,
-             labeller = labeller(metric = facet_labels)) +
-  scale_color_manual(values = behaviour_colors) +
-  scale_fill_manual(values = behaviour_colors) +
-  theme_classic(base_size = 12) +
-  theme(
-    strip.background = element_blank(),
-    strip.text = element_text(size = 12, face = "bold"),
-    axis.text = element_text(size = 10),
-    axis.title.y = element_text(margin = margin(r = 15)),
-    axis.title.x = element_text(margin = margin(t = 15))
-  ) +
-  labs(x = "Origin", y = "Alpha diversity")
+#### Phylogenetic
 
-plot_all
+```{r alpha_div_phyl_boxplot, comment="", message=FALSE, warning=FALSE, fig.height=3, fig.width=10, fig.fullwidth=TRUE}
+alpha_div %>%
+  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
+  left_join(sample_metadata, by = "sample") %>%
+  filter(!is.na(gut_location)) %>%
+  filter(metric=="phylogenetic") %>%
+      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+      geom_jitter(width = 0.1, alpha=0.5) +
+      scale_color_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      scale_fill_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      facet_wrap(. ~ gut_location, scales = "fixed", ncol=6) +
+      coord_cartesian(xlim = c(1, NA)) +
+      theme_classic() +
+      theme(
+        strip.background = element_blank(),
+        panel.grid.minor.x = element_line(size = .1, color = "grey"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )+ labs(title= "Phylogenetic diversity by gut location and fox behaviour")
+```
 
+#### Functional
+
+```{r alpha_div_functional_boxplot, comment="", message=FALSE, warning=FALSE, fig.height=3, fig.width=10, fig.fullwidth=TRUE}
+alpha_div %>%
+  pivot_longer(-sample, names_to = "metric", values_to = "value") %>%
+  left_join(sample_metadata, by = "sample") %>%
+  filter(!is.na(gut_location)) %>%
+  filter(metric=="functional") %>%
+      ggplot(aes(y = value, x = fox_behaviour, group=fox_behaviour, color=fox_behaviour, fill=fox_behaviour)) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+      geom_jitter(width = 0.1, alpha=0.5) +
+      scale_color_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      scale_fill_manual(values =  c(
+  tame = "#1f77b4",   
+  aggr = "#d62728",   
+  unsel = "#2ca02c")) +
+      facet_wrap(. ~ gut_location, scales = "fixed", ncol=6) +
+      coord_cartesian(xlim = c(1, NA)) +
+      theme_classic() +
+      theme(
+        strip.background = element_blank(),
+        panel.grid.minor.x = element_line(size = .1, color = "grey"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )+ labs(title= "Functional diversity by gut location and fox behaviour")
 ```
 
 
+### Mixed models 
+
+#### Richness
+
+```{r mixed_model_richness}
+Model_richness <- glmer.nb(richness ~ fox_behaviour+(1|gut_location), data = alpha_div_meta)
+summary(Model_richness)
+```
+
+```{r emmeans in model richness}
+emmeans(Model_richness, pairwise ~ fox_behaviour)
+```
+There is no significant effect of fox behaviour on the richness.
+
+#### Neutral
+
+```{r mixed neutral}
+Model_neutral <- lme(fixed = neutral ~ fox_behaviour, data = alpha_div_meta,
+               random = ~ 1 | gut_location)#log(seq_depth)+
+summary(Model_neutral)
+```
+
+#### Phylogenetic
+
+```{r mixed phylogenetic}
+Model_phylo <- lme(fixed = phylogenetic ~ fox_behaviour, data = alpha_div_meta,
+               random = ~ 1 | gut_location)
+summary(Model_phylo)
+```
+
+#### Functional
+
+```{r mixed functional}
+Model_func <- lme(fixed = functional ~ fox_behaviour, data = alpha_div_meta,
+               random = ~ 1 | gut_location)
+summary(Model_func)
+```
+
+
+```{r detach problematic packages}
+detach("package:pscl", unload = TRUE)
+detach("package:MuMIn", unload = TRUE)
+detach("package:MASS", unload = TRUE)
+detach("package:hilldiv2", unload = TRUE)
+```
 

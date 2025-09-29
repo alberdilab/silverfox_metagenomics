@@ -29,7 +29,7 @@ sequence_fractions <- read_counts %>%
   group_by(sample) %>%
   summarise(mags = sum(value)) %>%
 	left_join(preprocessing, by = join_by(sample == sample)) %>%
-	select(sample,mags,bases_metagenomic,bases_host ,bases_discarded, bases_raw) %>%
+	dplyr::select(sample,mags,bases_metagenomic,bases_host ,bases_discarded, bases_raw) %>%
 	mutate(mags_bases = mags*146) %>% #total number of bases mapped to mags (multiplying by effective read length)
   mutate(bases_discarded_proportion = bases_discarded/bases_raw) %>%
 	mutate(lowqual_bases = ((bases_metagenomic+bases_host)/(1-bases_discarded_proportion))-(bases_metagenomic+bases_host)) %>%
@@ -39,7 +39,7 @@ sequence_fractions <- read_counts %>%
 
 ```{r sequence_fractions_gb}
 sequence_fractions %>%
-	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
+	dplyr::select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   tt()
@@ -49,7 +49,7 @@ sequence_fractions %>%
 ```{r dna_fractions_mean}
 #mean
 sequence_fractions %>%
-	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
+	dplyr::select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   summarise(across(where(is.numeric), mean, na.rm = TRUE)) %>%
@@ -59,7 +59,7 @@ sequence_fractions %>%
 ```{r sequence_fractions_sd}
 #SD
 sequence_fractions %>%
-	select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
+	dplyr::select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
   mutate_at(vars(-sample), ~./1000000000) %>%
   rename("Sample"=1, "Low quality"=2, "Mapped to host"=3, "Unmapped"=4, "Mapped to MAGs"=5) %>%
   summarise(across(where(is.numeric), sd, na.rm = TRUE)) %>% 
@@ -70,7 +70,7 @@ sequence_fractions %>%
 
 ```{r dna_fractions_plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}
 sequence_fractions_plot <- sequence_fractions %>%
-  select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
+  dplyr::select(sample, lowqual_bases, bases_host, unmapped_bases, mags_bases)  %>%
 	pivot_longer(!sample, names_to = "fraction", values_to = "value") %>%
 	mutate(value = value / 1000000000) %>%
 	mutate(fraction = factor(fraction, levels = c("lowqual_bases","bases_host","unmapped_bases","mags_bases"))) 

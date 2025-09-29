@@ -11,7 +11,7 @@ Circular tree with genome size and completeness
 phylum_heatmap <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
     right_join(genome_metadata, by=join_by(phylum == phylum)) %>%
     arrange(match(genome, genome_tree$tip.label)) %>%
-    select(genome,phylum) %>%
+   dplyr::select(genome,phylum) %>%
     mutate(phylum = factor(phylum, levels = unique(phylum))) %>%
     column_to_rownames(var = "genome")
 
@@ -73,7 +73,7 @@ Investigating large genome MAG:
 large_genome_mag <- genome_metadata %>% 
   arrange(desc(size)) %>% 
   mutate(size_Mb = size /1000000)%>%
-  select(genus, size_Mb ,msa_percent, completeness, contamination, score, contig_count) 
+ dplyr::select(genus, size_Mb ,msa_percent, completeness, contamination, score, contig_count) 
   
 
 head(large_genome_mag)
@@ -464,7 +464,7 @@ gift_pcoa_rel_eigen <- gift_pcoa$values$Relative_eig[1:10]
 # Get genome positions
 gift_pcoa_vectors <- gift_pcoa$vectors %>% #extract vectors
   as.data.frame() %>% 
-  select(Axis.1,Axis.2) # keep the first 2 axes
+ dplyr::select(Axis.1,Axis.2) # keep the first 2 axes
 
 gift_pcoa_eigenvalues <- gift_pcoa$values$Eigenvalues[c(1,2)]
 
@@ -557,7 +557,7 @@ gift_pcoa_rel_eigen_bray <- gift_pcoa_bray$values$Relative_eig[1:10]
 # Get genome positions
 gift_pcoa_vectors_bray <- gift_pcoa_bray$vectors %>% #extract vectors
   as.data.frame() %>% 
-  select(Axis.1,Axis.2) # keep the first 2 axes
+ dplyr::select(Axis.1,Axis.2) # keep the first 2 axes
 
 gift_pcoa_eigenvalues_bray <- gift_pcoa_bray$values$Eigenvalues[c(1,2)]
 
@@ -730,7 +730,7 @@ function_ordination <- tSNE_function$Y %>%
                 mutate(genome=rownames(function_table)) %>%
                 inner_join(genome_metadata, by="genome") %>%
                 rename(tSNE1="V1", tSNE2="V2") %>%
-                select(genome,phylum,tSNE1,tSNE2, length) %>%
+               dplyr::select(genome,phylum,tSNE1,tSNE2, length) %>%
                 ggplot(aes(x = tSNE1, y = tSNE2, color = phylum, size=length))+
                             geom_point(shape=16, alpha=0.7) +
                             scale_color_manual(values=phylum_colors) +
