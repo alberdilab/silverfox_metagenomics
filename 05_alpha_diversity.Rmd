@@ -1,9 +1,10 @@
 # Alpha diversity
 
 ```{r load_data_alpha, comment="", message=FALSE, warning=FALSE}
-detach("package:pscl", unload = TRUE)
-detach("package:MuMIn", unload = TRUE)
-detach("package:MASS", unload = TRUE)
+if ("package:pscl" %in% search()) detach("package:pscl", unload = TRUE)
+if ("package:MuMIn" %in% search()) detach("package:MuMIn", unload = TRUE)
+if ("package:MASS" %in% search()) detach("package:MASS", unload = TRUE)
+
 load("data/data.Rdata")
 ```
 

@@ -2063,7 +2063,7 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 <li class="chapter" data-level="8" data-path="beta-diversity.html"><a href="beta-diversity.html"><i class="fa fa-check"></i><b>8</b> Beta diversity</a>
 <ul>
 <li class="chapter" data-level="8.0.1" data-path="beta-diversity.html"><a href="beta-diversity.html#permanova"><i class="fa fa-check"></i><b>8.0.1</b> Permanova</a></li>
-<li class="chapter" data-level="8.0.2" data-path="beta-diversity.html"><a href="beta-diversity.html#nmds"><i class="fa fa-check"></i><b>8.0.2</b> NMDS</a></li>
+<li class="chapter" data-level="8.0.2" data-path="beta-diversity.html"><a href="beta-diversity.html#nmds-non-metric-multidimensional-scaling"><i class="fa fa-check"></i><b>8.0.2</b> NMDS: Non-metric Multidimensional Scaling</a></li>
 </ul></li>
 <li class="chapter" data-level="9" data-path="differential-abundance-analysis.html"><a href="differential-abundance-analysis.html"><i class="fa fa-check"></i><b>9</b> Differential abundance analysis</a>
 <ul>
@@ -2093,10 +2093,11 @@ div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
             <section class="normal" id="section-">
 <div id="alpha-diversity" class="section level1 hasAnchor" number="7">
 <h1><span class="header-section-number">Chapter 7</span> Alpha diversity<a href="alpha-diversity.html#alpha-diversity" class="anchor-section" aria-label="Anchor link to header"></a></h1>
-<div class="sourceCode" id="cb132"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb132-1"><a href="alpha-diversity.html#cb132-1" tabindex="-1"></a><span class="fu">detach</span>(<span class="st">&quot;package:pscl&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb132-2"><a href="alpha-diversity.html#cb132-2" tabindex="-1"></a><span class="fu">detach</span>(<span class="st">&quot;package:MuMIn&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb132-3"><a href="alpha-diversity.html#cb132-3" tabindex="-1"></a><span class="fu">detach</span>(<span class="st">&quot;package:MASS&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb132-4"><a href="alpha-diversity.html#cb132-4" tabindex="-1"></a><span class="fu">load</span>(<span class="st">&quot;data/data.Rdata&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb132"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb132-1"><a href="alpha-diversity.html#cb132-1" tabindex="-1"></a><span class="cf">if</span> (<span class="st">&quot;package:pscl&quot;</span> <span class="sc">%in%</span> <span class="fu">search</span>()) <span class="fu">detach</span>(<span class="st">&quot;package:pscl&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb132-2"><a href="alpha-diversity.html#cb132-2" tabindex="-1"></a><span class="cf">if</span> (<span class="st">&quot;package:MuMIn&quot;</span> <span class="sc">%in%</span> <span class="fu">search</span>()) <span class="fu">detach</span>(<span class="st">&quot;package:MuMIn&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb132-3"><a href="alpha-diversity.html#cb132-3" tabindex="-1"></a><span class="cf">if</span> (<span class="st">&quot;package:MASS&quot;</span> <span class="sc">%in%</span> <span class="fu">search</span>()) <span class="fu">detach</span>(<span class="st">&quot;package:MASS&quot;</span>, <span class="at">unload =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb132-4"><a href="alpha-diversity.html#cb132-4" tabindex="-1"></a></span>
+<span id="cb132-5"><a href="alpha-diversity.html#cb132-5" tabindex="-1"></a><span class="fu">load</span>(<span class="st">&quot;data/data.Rdata&quot;</span>)</span></code></pre></div>
 <div id="summary-table" class="section level2 hasAnchor" number="7.1">
 <h2><span class="header-section-number">7.1</span> Summary table<a href="alpha-diversity.html#summary-table" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <div class="sourceCode" id="cb133"><pre class="sourceCode r script-source"><code class="sourceCode r"><span id="cb133-1"><a href="alpha-diversity.html#cb133-1" tabindex="-1"></a><span class="fu">library</span>(hilldiv2)</span>

@@ -67,7 +67,12 @@ phylogenetic-2
 functional-2
 beta-diversity
 permanova
-nmds
+richness-3
+neutral-3
+phylogenetic-3
+functional-3
+nmds-non-metric-multidimensional-scaling
+richness-4
 richness-between-gut-locations
 neutral-diversity
 phylogenetic-diversity
