@@ -12,12 +12,12 @@ genome_counts_filt <- genome_counts_filt %>%
 sample_metadata <- sample_metadata %>%
   filter(sample %in% colnames(genome_counts_filt))
 ```
-
+## Create Phyloseq object
 ```{r phyloseq_gut, comment="", message=FALSE, warning=FALSE}
 # Reorder levels: set "unsel" as reference
 sample_metadata$fox_behaviour <- factor(
   sample_metadata$fox_behaviour,
-  levels = c("unsel", "aggr", "tame")  
+  levels = c("unsel", "aggr", "tame")  #here we set unsel as reference level
 )
 
 #Phyloseq object
@@ -38,9 +38,10 @@ tree <- phy_tree(genome_tree)
 
 physeq_all = phyloseq(count_phy, TAX, sample_info_tab_phy, tree)
 ```
+## Run ANCOM-BC2 (fox behaviour)
+Analysis of Composition of Microbes with Bias Correction
 
-
-```{r ancombc, comment="", message=FALSE, warning=FALSE}
+```{r ancombc_behaviour, comment="", message=FALSE, warning=FALSE}
 set.seed(1234) #set seed for reproducibility
 ancom_mag_gut = ancombc2(data = physeq_all, 
                   assay_name = "counts", 
@@ -58,7 +59,7 @@ ancom_mag_gut = ancombc2(data = physeq_all,
                   n_cl = 2, 
                   verbose = TRUE,
                   global = FALSE, 
-                  pairwise = FALSE, 
+                  pairwise = TRUE,  #to get all pairwise comparisons
                   dunnet = FALSE, 
                   trend = FALSE,
                   iter_control = list(tol = 1e-5, max_iter = 20, verbose = FALSE),
@@ -69,7 +70,8 @@ ancom_mag_gut = ancombc2(data = physeq_all,
 
 ```
 
-
+## Phylum comparisons
+### Aggressive vs Unselected
 ```{r ancom_rand1_gut, comment="", message=FALSE, warning=FALSE}
 taxonomy <- data.frame(physeq_all@tax_table) %>%
   rownames_to_column(., "taxon")%>%
@@ -92,22 +94,22 @@ colors_alphabetic <- read_tsv("https://raw.githubusercontent.com/earthhologenome
 	unique() %>%
 	dplyr::arrange(phylum)
 
-tax_table <- as.data.frame(unique(ancom_mag_gut_table$phylum))
-  
+tax_table <- as.data.frame(unique(taxonomy$phylum))  # use all phyla from full taxonomy
 colnames(tax_table)[1] <- "phylum"
-tax_color <- merge(tax_table, colors_alphabetic, by="phylum")%>%
-	dplyr::arrange(phylum) %>%
-	dplyr::select(colors) %>%
-	pull()
+
+tax_color <- merge(tax_table, colors_alphabetic, by="phylum") %>%
+  arrange(phylum) %>%
+  dplyr::select(colors) %>%
+  pull()
 ```
 
-```{r ancombc_rand_plot_mag_gut, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
+```{r ancombc_rand_plot_mag_aggr_vs_unsel, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
 ancom_mag_gut_table %>%
       mutate(genome=factor(genome,levels=ancom_mag_gut_table$genome)) %>%
 ggplot(aes(x=lfc_fox_behaviouraggr, y=forcats::fct_reorder(genome,lfc_fox_behaviouraggr), fill=phylum)) + #forcats::fct_rev()
   geom_col() + 
   scale_fill_manual(values=tax_color) + 
-  geom_hline(yintercept=0) + 
+  geom_vline(xintercept=0) + 
 #  coord_flip()+
   theme(panel.background = element_blank(),
         axis.line = element_line(size = 0.5, linetype = "solid", colour = "black"),
@@ -117,10 +119,146 @@ ggplot(aes(x=lfc_fox_behaviouraggr, y=forcats::fct_reorder(genome,lfc_fox_behavi
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14, face = "bold"),
         legend.position = "right", legend.box = "vertical")+
-  xlab("log2FoldChange") + 
+  labs(title = "Aggressive vs Unselected")+
+  xlab("log2FoldChange (aggr vs unsel)") + 
   ylab("Species")+
   guides(fill=guide_legend(title="Phylum"))
 ```
+
+
+### Tame vs Unselected
+```{r ancombc_rand_plot_mag_tame_vs_unsel, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
+ancom_mag_gut_table_tame_unsel <- ancom_mag_gut$res %>%
+  dplyr::select(taxon, lfc_fox_behaviourtame, p_fox_behaviourtame) %>%
+  filter(p_fox_behaviourtame < 0.05) %>%
+  arrange(p_fox_behaviourtame) %>%
+  merge(taxonomy, by="taxon") %>%
+  rename(genome=taxon) %>%
+  arrange(lfc_fox_behaviourtame)
+
+ggplot(ancom_mag_gut_table_tame_unsel,
+       aes(x=lfc_fox_behaviourtame,
+           y=fct_reorder(genome, lfc_fox_behaviourtame),
+           fill=phylum)) +
+  geom_col() +
+  geom_vline(xintercept=0) +
+  scale_fill_manual(values=tax_color) +
+  labs(x="log2 Fold Change (tame vs unsel)", y="Species",
+       title = "Tame vs Unselected")+
+  theme_bw()
+
+
+```
+```{r ancom_mag_results}
+ancom_mag_results <- ancom_mag_gut$res 
+```
+
+
+## Genus
+
+### Aggressive vs Unselected
+```{r ancombc_rand_plot_mag_aggr_vs_unsel_genus, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
+ggplot(ancom_mag_gut_table,
+       aes(x=lfc_fox_behaviouraggr,
+           y=fct_reorder(genome, lfc_fox_behaviouraggr),
+           fill=genus)) +
+  geom_col() +
+  geom_vline(xintercept=0) +
+  labs(x="log2 Fold Change (aggr vs unsel)", y="Species",
+       title = "Aggressive vs Unselected")+
+  theme_bw()
+```
+
+
+### Tame vs Unselected
+```{r ancombc_rand_plot_mag_tame_vs_unsel_genus, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
+ggplot(ancom_mag_gut_table_tame_unsel,
+       aes(x=lfc_fox_behaviourtame,
+           y=fct_reorder(genome, lfc_fox_behaviourtame),
+           fill=genus)) +
+  geom_col() +
+  geom_vline(xintercept=0) +
+  labs(x="log2 Fold Change (tame vs unsel)", y="Species",
+       title = "Tame vs Unselected")+
+  theme_bw()
+```
+
+## Run ANCOM-BC2 (gut location)
+Analysis of Composition of Microbes with Bias Correction
+
+```{r ancombc_location, comment="", message=FALSE, warning=FALSE}
+set.seed(1234) #set seed for reproducibility
+ancom_mag_gut_location = ancombc2(data = physeq_all, 
+                  assay_name = "counts", 
+                  tax_level = NULL,
+                  fix_formula = "gut_location+ fox_behaviour",
+                  p_adj_method = "holm", 
+                  pseudo_sens = TRUE,
+                  prv_cut =0, 
+                  lib_cut = 0, 
+                  s0_perc = 0.05,
+                  group = "gut_location", 
+                  struc_zero = TRUE, 
+                  neg_lb = FALSE,
+                  alpha = 0.05, 
+                  n_cl = 2, 
+                  verbose = TRUE,
+                  global = FALSE, 
+                  pairwise = TRUE,  #to get all pairwise comparisons
+                  dunnet = FALSE, 
+                  trend = FALSE,
+                  iter_control = list(tol = 1e-5, max_iter = 20, verbose = FALSE),
+                  em_control = list(tol = 1e-5, max_iter = 100),
+                  lme_control = lme4::lmerControl(),
+                  mdfdr_control = list(fwer_ctrl_method = "holm", B = 100), 
+                  trend_control = NULL)
+
+```
+
+
+```{r dileum vs fcolon}
+ancom_mag_gut_table_fcolon_dileum <- ancom_mag_gut_location$res %>%
+  dplyr::select(taxon, lfc_gut_locationF_colon, p_gut_locationF_colon, q_gut_locationF_colon) %>%
+  filter(p_gut_locationF_colon < 0.05) %>%
+  arrange(p_gut_locationF_colon) %>%
+  merge(taxonomy, by="taxon") %>%
+  rename(genome=taxon) %>%
+  arrange(lfc_gut_locationF_colon)
+
+ggplot(ancom_mag_gut_table_fcolon_dileum,
+       aes(x=lfc_gut_locationF_colon,
+           y=fct_reorder(genome, lfc_gut_locationF_colon),
+           fill=phylum)) +
+  geom_col() +
+  geom_vline(xintercept=0) +
+  scale_fill_manual(values=tax_color) +
+  labs(x="log2 Fold Change (D_ileum vs F_colon)", y="Species",
+       title = "D_ileum vs F_colon")+
+  theme_bw()
+```
+```{r dileum vs kileum}
+ancom_mag_gut_table_kileum_dileum <- ancom_mag_gut_location$res %>%
+  dplyr::select(taxon, lfc_gut_locationK_ileum, p_gut_locationK_ileum, q_gut_locationK_ileum) %>%
+  filter(p_gut_locationK_ileum < 0.05) %>%
+  arrange(p_gut_locationK_ileum) %>%
+  merge(taxonomy, by="taxon") %>%
+  rename(genome=taxon) %>%
+  arrange(lfc_gut_locationK_ileum)
+
+ggplot(ancom_mag_gut_table_kileum_dileum,
+       aes(x=lfc_gut_locationK_ileum,
+           y=fct_reorder(genome, lfc_gut_locationK_ileum),
+           fill=phylum)) +
+  geom_col() +
+  geom_vline(xintercept=0) +
+  scale_fill_manual(values=tax_color) +
+  labs(x="log2 Fold Change (D_ileum vs K_ileum)", y="Species",
+       title = "D_ileum vs K_ileum")+
+  theme_bw()
+```
+
+
+## Volcano plots
 
 ```{r ancom_rand_volcano_mag_gut, comment="", message=FALSE, warning=FALSE}
 phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI_taxonomy_colour/main/ehi_phylum_colors.tsv") %>%
@@ -140,7 +278,7 @@ ancom_mag_gut$res %>%
   geom_point(size=3, show.legend = FALSE) +
   #xlim(c(-10,4)) +
   scale_color_manual(values = phylum_colors) +
-  labs(color = "Significant phylum", x = "Log-fold difference between sample types", y = "-log(p-value)") +
+  labs(color = "Significant phylum", x = "Log-fold difference (aggr vs unsel)", y = "-log(p-value)") +
   theme_classic()
 #dev.off()
 ```

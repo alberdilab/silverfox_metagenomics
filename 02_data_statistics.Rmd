@@ -156,7 +156,7 @@ ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
     
 ```
 
-# Filtering
+## Filtering
 To remove samples with high host data or low metagenomic data
 ```{r host fraction plot}
 host_data_plot <- sequence_fractions %>%

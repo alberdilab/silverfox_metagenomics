@@ -81,3 +81,13 @@ functional-diversity
 functional-diversity-by-gut-location
 differential-abundance-analysis
 load-the-data
+create-phyloseq-object
+run-ancom-bc2-fox-behaviour
+phylum-comparisons
+aggressive-vs-unselected
+tame-vs-unselected
+genus-1
+aggressive-vs-unselected-1
+tame-vs-unselected-1
+run-ancom-bc2-gut-location
+volcano-plots
