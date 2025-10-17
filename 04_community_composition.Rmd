@@ -584,75 +584,89 @@ wilcox.test(presence ~ sample_type, data=mag_prevalence_location)  %>%
 mag_prevalence_location %>% 
   ggplot(aes(x=sample_type,y=presence, color=sample_type, fill=sample_type)) +
     geom_boxplot(alpha = 0.5) +
-    geom_jitter() +
+    geom_point() +
     theme_minimal()
 ```
 Comparing the prevalence/presence of the MAGs between aggressive and tame foxes
 ```{r core_mag_fox_behaviour, warning=FALSE, comments="", message=FALSE}
-mag_prevalence_location <- genome_counts_filt  %>%
-  mutate_at(vars(-genome),~./sum(.)) %>%
+mag_prevalence_behaviour <- genome_counts_filt  %>%
+  mutate_at(vars(-genome),~./sum(.)) %>% #divide each column (except genome) by its sum to get relative abundance
   pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
   left_join(sample_metadata,by="sample") %>% 
   filter(!grepl("unsel", fox_behaviour))%>% #to remove the unselected foxes
-  mutate(presence=ifelse(abundance>0,1,0)) %>% 
+  mutate(presence=ifelse(abundance>0,1,0)) %>%  #converts abundance to presence/absence
  dplyr::select(genome,sample,presence,gut_location, fox_behaviour) %>%
   group_by(genome,gut_location, fox_behaviour) %>%
-  summarise(presence=ifelse(sum(presence)>0,1,0)) %>% 
-  group_by(genome,fox_behaviour) %>%
-  summarise(presence=sum(presence))
+  summarise(presence=ifelse(sum(presence)>0,1,0)) %>%  #counts presence per combination of genome, gut location and fox behaviour
+  group_by(genome,fox_behaviour) %>% 
+  summarise(presence=sum(presence))  #sum the presences for each fox behaviour 
 
-mag_prevalence_location %>% 
+mag_prevalence_behaviour %>% 
   group_by(fox_behaviour) %>%
   summarise(mean=mean(presence),sd=sd(presence)) %>%
   tt()
 
-wilcox.test(presence ~ fox_behaviour, data=mag_prevalence_location)  %>%
+wilcox.test(presence ~ fox_behaviour, data=mag_prevalence_behaviour)  %>%
   tidy()
 ```
 
 ```{r core_mag_behaviour_boxplot, warning=FALSE, comments="", message=FALSE}
 behaviour_colors <- c( "#d62728", "#1f77b4","#2ca02c")
 
-mag_prevalence_location %>% 
+mag_prevalence_behaviour %>% 
   ggplot(aes(x=fox_behaviour,y=presence, color=fox_behaviour, fill=fox_behaviour)) +
     geom_boxplot() +
-    geom_jitter() +
+    geom_point() +
     scale_color_manual(values=behaviour_colors) +
     scale_fill_manual(values=str_c(behaviour_colors,"50")) +
     theme_minimal()
 ```
 
 ## Kruskal-Wallis
+As we have >2 groups in gut location and fox behaviour, we will carry out Kruskal-Wallis tests to evaluate if there are significant differences between the groups in terms of MAG presence count (how many MAGs are present in each group). If the p-value < 0.05, we will do pairwise Wilcoxon tests, to evaluate which of the groups differ in this regard.
+
+Gut location:
 ```{r kruskal wallis to test the gut locations}
-mag_prevalence_location_behaviour <- genome_counts_filt  %>%
+mag_prevalence_gutlocation <- genome_counts_filt  %>%
   mutate_at(vars(-genome),~./sum(.)) %>%
   pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
   left_join(sample_metadata,by="sample") %>%
   mutate(presence=ifelse(abundance>0,1,0)) %>% 
  dplyr::select(genome,sample,presence,gut_location, fox_behaviour) %>%
-  group_by(genome,gut_location, fox_behaviour) %>%
+  group_by(genome,gut_location) %>%
   summarise(presence=ifelse(sum(presence)>0,1,0)) 
 
 # Kruskal–Wallis test (nonparametric ANOVA)
-kruskal.test(presence ~ gut_location, data = mag_prevalence_location_behaviour)
+kruskal.test(presence ~ gut_location, data = mag_prevalence_gutlocation)
 ```
 
 ```{r pairwise wilcoxon tests}
-pairwise.wilcox.test(mag_prevalence_location_behaviour$presence,
-                     mag_prevalence_location_behaviour$gut_location,
+pairwise.wilcox.test(mag_prevalence_gutlocation$presence,
+                     mag_prevalence_gutlocation$gut_location,
+                     p.adjust.method = "fdr")
+```
+```{r kruskal wallis to test the fox behaviours}
+mag_prevalence_foxbehaviour <- genome_counts_filt  %>%
+  mutate_at(vars(-genome),~./sum(.)) %>%
+  pivot_longer(!genome,names_to="sample",values_to="abundance") %>% 
+  left_join(sample_metadata,by="sample") %>%
+  mutate(presence=ifelse(abundance>0,1,0)) %>% 
+ dplyr::select(genome,sample,presence,gut_location, fox_behaviour) %>%
+  group_by(genome,fox_behaviour) %>%
+  summarise(presence=ifelse(sum(presence)>0,1,0)) 
+
+#Kruskal–Wallis test (nonparametric ANOVA)
+kruskal.test(presence ~ fox_behaviour, data = mag_prevalence_foxbehaviour)
+```
+```{r pairwise wilcoxon tests fox behaviour}
+pairwise.wilcox.test(mag_prevalence_foxbehaviour$presence,
+                     mag_prevalence_foxbehaviour$fox_behaviour,
                      p.adjust.method = "fdr")
 ```
 
-## Generalized linear model 
-```{r model}
-# Fit GLMM: logistic regression with random effect for gut_location
-glmm_model <- glmer(
-  presence ~ fox_behaviour + (1 | gut_location), 
-  data = mag_prevalence_location_behaviour,
-  family = binomial   # logistic regression because presence is 0/1
-)
 
 
-summary(glmm_model)
-```
+
+
+
 

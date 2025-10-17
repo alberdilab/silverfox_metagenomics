@@ -21,6 +21,36 @@ preprocessing %>%
     tt()
 ```
 
+
+How many samples do we have of each group (behaviour)?
+```{r checking samples}
+sample_metadata %>%
+  group_by(fox_behaviour) %>%
+  summarize(n_samples = n()) %>%
+  tt()
+```
+How many MAGs?
+```{r number of genomes}
+genome_metadata %>%
+  summarize(n_genomes = n())%>%
+  tt()
+```
+
+
+```{r mean completeness and contamination}
+genome_metadata %>% 
+  summarise(
+    mean_c = mean(completeness, na.rm = TRUE) %>% round(2),
+    sd_c = sd(completeness, na.rm = TRUE) %>% round(2),
+    mean_con = mean(contamination, na.rm = TRUE) %>% round(2),
+    sd_con = sd(contamination, na.rm = TRUE) %>% round(2)
+  ) %>%
+  unite("Completeness", mean_c, sd_c, sep = " ± ") %>%
+  unite("Contamination", mean_con, sd_con, sep = " ± ") %>%
+  tt()
+```
+
+
 ### DNA fractions
 
 ```{r sequence_fractions_calculation}

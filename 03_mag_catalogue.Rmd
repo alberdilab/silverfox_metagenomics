@@ -73,7 +73,7 @@ Investigating large genome MAG:
 large_genome_mag <- genome_metadata %>% 
   arrange(desc(size)) %>% 
   mutate(size_Mb = size /1000000)%>%
- dplyr::select(genus, size_Mb ,msa_percent, completeness, contamination, score, contig_count) 
+ dplyr::select(genome,genus, size_Mb ,msa_percent, completeness, contamination, score, contig_count) 
   
 
 head(large_genome_mag)
@@ -442,6 +442,7 @@ function_tree <- function_tree +
                  offset = 3.8,
                  orientation="y",
                  stat="identity") +
+            coord_flip()+
             scale_fill_gradient(low = "#cf8888", high = "#a2cc87") +
             labs(fill="Genome\ncompleteness")
 
@@ -515,9 +516,9 @@ gift_pcoa_vectors %>%
                      aes(label = label, x = Axis.1 * scale, y = Axis.2 * scale),
                      segment.color = 'transparent') +
     xlim(-3,3) + 
-    ylim(-2.5,2.5) +
+    ylim(-2,2) +
     theme_minimal() + 
-    theme(legend.position = "none")+ 
+  
   labs(
     x = paste0("PCoA1 (", round(gift_pcoa_rel_eigen[1]*100, 2), " %)"),
     y = paste0("PCoA2 (", round(gift_pcoa_rel_eigen[2]*100, 2), " %)")

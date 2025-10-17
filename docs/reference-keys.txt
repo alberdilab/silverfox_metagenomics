@@ -44,7 +44,6 @@ genus
 core-microbiota
 wilcoxon-test
 kruskal-wallis
-generalized-linear-model
 alpha-diversity
 summary-table
 by-location
