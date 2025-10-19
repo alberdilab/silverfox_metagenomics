@@ -442,7 +442,6 @@ function_tree <- function_tree +
                  offset = 3.8,
                  orientation="y",
                  stat="identity") +
-            coord_flip()+
             scale_fill_gradient(low = "#cf8888", high = "#a2cc87") +
             labs(fill="Genome\ncompleteness")
 

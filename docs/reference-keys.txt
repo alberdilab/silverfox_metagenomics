@@ -82,6 +82,7 @@ differential-abundance-analysis
 load-the-data
 create-phyloseq-object
 run-ancom-bc2-fox-behaviour
+chcking-the-results
 phylum-comparisons
 aggressive-vs-unselected
 tame-vs-unselected

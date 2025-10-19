@@ -70,6 +70,50 @@ ancom_mag_gut = ancombc2(data = physeq_all,
 
 ```
 
+
+## Chcking the results
+```{r checking results ancom_gut}
+# Function to get significant ANCOM-BC2 results
+get_sig_ancom <- function(ancom_res, comp_prefix, alpha = 0.05, physeq_obj = physeq_all) {
+  
+  # Identify relevant columns
+  lfc_col <- paste0("lfc_", comp_prefix)
+  q_col   <- paste0("q_", comp_prefix)
+  
+  # Check if columns exist
+  if(!all(c(lfc_col, q_col) %in% colnames(ancom_res))) {
+    stop("Specified comparison columns not found in ANCOM-BC2 result.")
+  }
+  
+  # Filter significant taxa
+  sig_res <- ancom_res %>%
+    dplyr::select(taxon, all_of(lfc_col), all_of(q_col)) %>%
+    filter(.data[[q_col]] < alpha) %>%
+    arrange(.data[[q_col]])
+  
+  # Merge taxonomy
+  taxonomy <- data.frame(physeq_obj@tax_table) %>%
+    rownames_to_column("taxon") %>%
+    mutate_at(vars(order, phylum, family, genus), ~ str_replace(., "[dpcofgs]__", ""))
+  
+  sig_res <- sig_res %>%
+    left_join(taxonomy, by = "taxon")
+  
+  # Return result (can be empty if none significant)
+  return(sig_res)
+}
+
+# Aggressive vs Unselected
+sig_aggr_vs_unsel <- get_sig_ancom(ancom_mag_gut$res, "fox_behaviouraggr")
+
+# Tame vs Unselected
+sig_tame_vs_unsel <- get_sig_ancom(ancom_mag_gut$res, "fox_behaviourtame")
+
+```
+
+There are no significant results for the differential abundance analysis between the fox behaviours.
+
+
 ## Phylum comparisons
 ### Aggressive vs Unselected
 ```{r ancom_rand1_gut, comment="", message=FALSE, warning=FALSE}
@@ -78,9 +122,9 @@ taxonomy <- data.frame(physeq_all@tax_table) %>%
   mutate_at(vars(order, phylum, family, genus), ~ str_replace(., "[dpcofgs]__", ""))
 
 ancom_mag_gut_table <- ancom_mag_gut$res %>%
-  dplyr::select(taxon, lfc_fox_behaviouraggr, p_fox_behaviouraggr) %>%
-  filter( p_fox_behaviouraggr < 0.05) %>%
-  dplyr::arrange( p_fox_behaviouraggr) %>%
+  dplyr::select(taxon, lfc_fox_behaviouraggr, q_fox_behaviouraggr) %>%
+  filter( q_fox_behaviouraggr < 0.05) %>%
+  dplyr::arrange( q_fox_behaviouraggr) %>%
   merge(., taxonomy, by="taxon") %>%
   rename(genome=taxon) %>% 
   mutate_at(vars(phylum, genus), ~ str_replace(., "[dpcofgs]__", ""))%>%
@@ -129,9 +173,9 @@ ggplot(aes(x=lfc_fox_behaviouraggr, y=forcats::fct_reorder(genome,lfc_fox_behavi
 ### Tame vs Unselected
 ```{r ancombc_rand_plot_mag_tame_vs_unsel, comment="", message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.fullwidth=TRUE}
 ancom_mag_gut_table_tame_unsel <- ancom_mag_gut$res %>%
-  dplyr::select(taxon, lfc_fox_behaviourtame, p_fox_behaviourtame) %>%
-  filter(p_fox_behaviourtame < 0.05) %>%
-  arrange(p_fox_behaviourtame) %>%
+  dplyr::select(taxon, lfc_fox_behaviourtame, q_fox_behaviourtame) %>%
+  filter(q_fox_behaviourtame < 0.05) %>%
+  arrange(q_fox_behaviourtame) %>%
   merge(taxonomy, by="taxon") %>%
   rename(genome=taxon) %>%
   arrange(lfc_fox_behaviourtame)
@@ -216,11 +260,23 @@ ancom_mag_gut_location = ancombc2(data = physeq_all,
 ```
 
 
+```{r checking gut location ancom results}
+# Pairwise gut location comparisons
+sig_F <- get_sig_ancom(ancom_mag_gut_location$res, "gut_locationF_colon")
+sig_F
+sig_K <- get_sig_ancom(ancom_mag_gut_location$res, "gut_locationK_ileum")
+sig_K 
+sig_M <- get_sig_ancom(ancom_mag_gut_location$res, "gut_locationM_colon")
+sig_M
+```
+
+
+
 ```{r dileum vs fcolon}
 ancom_mag_gut_table_fcolon_dileum <- ancom_mag_gut_location$res %>%
   dplyr::select(taxon, lfc_gut_locationF_colon, p_gut_locationF_colon, q_gut_locationF_colon) %>%
-  filter(p_gut_locationF_colon < 0.05) %>%
-  arrange(p_gut_locationF_colon) %>%
+  filter(q_gut_locationF_colon < 0.05) %>%
+  arrange(q_gut_locationF_colon) %>%
   merge(taxonomy, by="taxon") %>%
   rename(genome=taxon) %>%
   arrange(lfc_gut_locationF_colon)
@@ -228,7 +284,7 @@ ancom_mag_gut_table_fcolon_dileum <- ancom_mag_gut_location$res %>%
 ggplot(ancom_mag_gut_table_fcolon_dileum,
        aes(x=lfc_gut_locationF_colon,
            y=fct_reorder(genome, lfc_gut_locationF_colon),
-           fill=phylum)) +
+           fill=genus)) +
   geom_col() +
   geom_vline(xintercept=0) +
   scale_fill_manual(values=tax_color) +
@@ -239,8 +295,8 @@ ggplot(ancom_mag_gut_table_fcolon_dileum,
 ```{r dileum vs kileum}
 ancom_mag_gut_table_kileum_dileum <- ancom_mag_gut_location$res %>%
   dplyr::select(taxon, lfc_gut_locationK_ileum, p_gut_locationK_ileum, q_gut_locationK_ileum) %>%
-  filter(p_gut_locationK_ileum < 0.05) %>%
-  arrange(p_gut_locationK_ileum) %>%
+  filter(q_gut_locationK_ileum < 0.05) %>%
+  arrange(q_gut_locationK_ileum) %>%
   merge(taxonomy, by="taxon") %>%
   rename(genome=taxon) %>%
   arrange(lfc_gut_locationK_ileum)
@@ -248,7 +304,7 @@ ancom_mag_gut_table_kileum_dileum <- ancom_mag_gut_location$res %>%
 ggplot(ancom_mag_gut_table_kileum_dileum,
        aes(x=lfc_gut_locationK_ileum,
            y=fct_reorder(genome, lfc_gut_locationK_ileum),
-           fill=phylum)) +
+           fill=genus)) +
   geom_col() +
   geom_vline(xintercept=0) +
   scale_fill_manual(values=tax_color) +
@@ -270,11 +326,13 @@ phylum_colors <- read_tsv("https://raw.githubusercontent.com/earthhologenome/EHI
     pull(colors, name=phylum)
 
 #pdf("figures/different_species_StrucZero_new_violin.pdf",width=12, height=6)
-ancom_mag_gut$res %>%
+ancom_behaviour_res <- ancom_mag_gut$res %>%
   dplyr::select(genome=taxon, lfc_fox_behaviouraggr, p_fox_behaviouraggr) %>%
-  left_join(genome_metadata, by = join_by(genome == genome)) %>%
-  mutate(phylum = ifelse(p_fox_behaviouraggr < 0.05, phylum, NA)) %>%
-  ggplot(., aes(x = lfc_fox_behaviouraggr, y = -log(p_fox_behaviouraggr), color = phylum)) +
+  left_join(genome_metadata, by = "genome") %>%
+  mutate(phylum = ifelse(p_fox_behaviouraggr < 0.05, phylum, NA))
+
+
+ggplot(ancom_behaviour_res , aes(x = lfc_fox_behaviouraggr, y = -log(p_fox_behaviouraggr), color = phylum)) +
   geom_point(size=3, show.legend = FALSE) +
   #xlim(c(-10,4)) +
   scale_color_manual(values = phylum_colors) +
@@ -282,3 +340,109 @@ ancom_mag_gut$res %>%
   theme_classic()
 #dev.off()
 ```
+```{r volcanoplot}
+ancom_mag_gut_location_plot <- ancom_mag_gut_location$res %>%
+  dplyr::select(genome=taxon, lfc_gut_locationF_colon, q_gut_locationF_colon) %>%
+  left_join(genome_metadata, by = "genome") %>%
+  mutate(phylum = ifelse(q_gut_locationF_colon < 0.05, phylum, NA)) 
+
+ggplot(ancom_mag_gut_location_plot, aes(x = lfc_gut_locationF_colon, y = -log(q_gut_locationF_colon), color = genus)) +
+  geom_point(size=3) +
+  #xlim(c(-10,4)) +
+  labs(color = "Significant genus", x = "Log-fold difference (D_ileum vs F_colon)", y = "-log(p-value)") +
+  theme_classic()
+```
+
+
+
+```{r extracting results from respair}
+library(forcats)
+
+res_pair <- ancom_mag_gut_location$res_pair
+
+res_long <- res_pair %>%
+  select(taxon, starts_with("lfc_"), starts_with("p_"), starts_with("q_")) %>%
+  pivot_longer(
+    cols = -taxon,
+    names_to = c("type", "comparison"),
+    names_pattern = "^(lfc|p|q)_(.*)$"
+  ) %>%
+  pivot_wider(names_from = type, values_from = value)
+
+#D_ileum was set as reference, so if only one group name (e.g. "gut_locationM_colon")
+#it means D_ileum vs M_colon
+res_long <- res_long %>%
+  mutate(
+    comparison = gsub("^gut_location", "", comparison),
+    comparison = case_when(
+      grepl("_gut_location", comparison) ~ gsub("_gut_location", " vs ", comparison),
+      TRUE ~ paste0(comparison, " vs D_ileum")
+    )
+  )
+
+#Filter to significant results (q<0.05)
+res_sig <- res_long %>%
+  filter(q < 0.05)
+
+res_sig <- res_sig %>%
+  left_join(taxonomy, by = "taxon")
+
+ggplot(res_sig,
+       aes(x = lfc,
+           y = fct_reorder(taxon, lfc),
+           fill = genus)) +
+  geom_col() +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_fill_manual(values = tax_color) +
+  labs(
+    x = "log2 Fold Change",
+    y = "Taxon",
+    title = "Significant Pairwise Comparisons (q < 0.05)"
+  ) +
+  facet_wrap(~comparison, scales = "free_y") +
+  theme_bw() +
+  theme(
+    strip.text = element_text(face = "bold", size = 6),
+    legend.position = "right"
+  )
+
+
+```
+```{r plotting a heatmap}
+res_heat <- res_long %>%
+  left_join(taxonomy, by = "taxon") %>%
+  mutate(significant = q < 0.05)
+
+#Keep only taxa that are significant in at least one comparison
+sig_taxa <- res_heat %>%
+  group_by(taxon) %>%
+  filter(any(significant)) %>%
+  ungroup()
+
+
+ggplot(sig_taxa, aes(x = comparison, y = fct_reorder(genus, lfc), fill = lfc)) +
+  geom_tile(color = "white") +
+  geom_text(
+    aes(label = ifelse(significant, "*", "")),
+    color = "black",
+    size = 5
+  ) +
+  scale_fill_viridis_c(
+    option = "C",      
+    direction = 1,      
+    name = "log2FC"
+  ) +
+  labs(
+    x = "Pairwise Comparison",
+    y = "Taxon",
+    title = "Differential Abundance Across Gut Locations (ANCOM-BC2)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  )
+
+```
+
+
