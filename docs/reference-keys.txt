@@ -91,3 +91,7 @@ aggressive-vs-unselected-1
 tame-vs-unselected-1
 run-ancom-bc2-gut-location
 volcano-plots
+functional-differences
+metabolic-capacity-index-mci
+wilcoxon
+community-elements-differences
