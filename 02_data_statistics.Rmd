@@ -168,7 +168,52 @@ ggplot(sequence_fractions_type, aes(x = sample, y = value, fill = fraction)) +
                  scales = "free_x", space = "free_x")
 
 ```
+```{r check host fraction differences}
+host_df <- sequence_fractions_type %>%
+  filter(fraction == "bases_host")
 
+#check normality:
+shapiro.test(host_df$value)
+
+#check if different between gut locations:
+kruskal.test(value ~ gut_location, data = host_df)
+
+
+#check which differences:
+pairwise.wilcox.test(host_df$value, host_df$gut_location, p.adjust.method = "fdr")
+```
+```{r check mag fraction differences}
+mag_df <- sequence_fractions_type %>%
+  filter(fraction == "mags_bases")
+
+#check normality:
+shapiro.test(mag_df$value)
+
+#check if different between gut locations:
+kruskal.test(value ~ gut_location, data = mag_df)
+
+
+#check which differences:
+pairwise.wilcox.test(mag_df$value, mag_df$gut_location, p.adjust.method = "fdr")
+```
+```{r median and iqr for host and mag}
+host_summary <- host_df %>%
+  group_by(gut_location) %>%
+  summarise(
+    median = median(value),
+    IQR = IQR(value)
+  )
+
+mag_summary <- mag_df %>%
+  group_by(gut_location) %>%
+  summarise(
+    median = median(value),
+    IQR = IQR(value)
+  )
+
+host_summary
+mag_summary
+```
 
 
 ```{r dna_fractions_plot_fox_behaviour, message=FALSE, warning=FALSE, fig.height=6, fig.width=10, fig.fullwidth=TRUE}

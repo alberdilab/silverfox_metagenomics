@@ -338,6 +338,7 @@ family_summary %>%
 
 
 
+
 ```{r taxonomy_jitterplot_family_location, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
 family_summary %>%
   left_join(genome_metadata %>% dplyr::select(family,phylum) %>% unique(),by=join_by(family==family)) %>%
@@ -509,13 +510,15 @@ location_colors <- c(
 )
 
 #UpSet plot
-upset(table_upset_analysis,
+location_upset_plot <- upset(table_upset_analysis,
       keep.order = TRUE,
       sets = rev(c("F_colon", "M_colon", "D_ileum", "K_ileum")),
       sets.bar.color = rev(location_colors),
       mb.ratio = c(0.55, 0.45),
+      text.scale = c(2.5, 2.5, 2.5, 2.5) ,
       order.by = "freq")
 
+location_upset_plot
 ```
 
 ```{r upset_plot_fox_behaviour, warning=FALSE, comments="", message=FALSE, fig.height=8, fig.width=10, fig.fullwidth=TRUE}
@@ -548,14 +551,18 @@ behaviour_colors <- c(
 )
 
 # UpSet plot
-upset(table_upset_analysis,
+behaviour_upset_plot <- upset(table_upset_analysis,
       keep.order = TRUE,
       sets = rev(names(behaviour_colors)),       
       sets.bar.color = rev(unname(behaviour_colors)), 
       mb.ratio = c(0.55, 0.45),
+      text.scale = c(2, 2, 2, 2.5) ,
       order.by = "freq")
 
+behaviour_upset_plot
 ```
+
+
 
 ## Wilcoxon Test
 H0 (null): The distribution of genome prevalence (presence) is the same across the two sample_type groups (gut tissue or gut content).

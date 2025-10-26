@@ -138,6 +138,34 @@ MCI %>%
     panel.border = element_blank())
 ```
 
+```{r comumnity_elem_plot_behaviour, comment="", message=FALSE, warning=FALSE, fig.height=12, fig.width=10, fig.fullwidth=TRUE}
+GIFTs_elements_community %>%
+    as.data.frame() %>%
+    rownames_to_column(var="sample")%>%
+    pivot_longer(!sample,names_to="trait",values_to="gift") %>%
+    left_join(sample_metadata, by = join_by(sample == sample)) %>%
+    mutate(functionid = substr(trait, 1, 3)) %>%
+    mutate(trait = case_when(
+      trait %in% GIFT_db$Code_element ~ GIFT_db$Element[match(trait, GIFT_db$Code_element)],
+      TRUE ~ trait
+    )) %>%
+    mutate(functionid = case_when(
+      functionid %in% GIFT_db$Code_function ~ GIFT_db$Function[match(functionid, GIFT_db$Code_function)],
+      TRUE ~ functionid
+    )) %>%
+    mutate(trait=factor(trait,levels=unique(GIFT_db$Element))) %>%
+    mutate(functionid=factor(functionid,levels=unique(GIFT_db$Function))) %>%
+    ggplot(aes(x=sample,y=trait,fill=gift)) +
+        geom_tile(colour="white", linewidth=0.2)+
+        scale_fill_gradientn(colours=rev(c("#d53e4f", "#f46d43", "#fdae61", "#fee08b", "#e6f598", "#abdda4", "#ddf1da")))+
+        facet_grid(functionid ~ fox_behaviour, scales="free",space="free") +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+              axis.text.y = element_text(size=8),
+              strip.text.y = element_text(angle = 0)
+              ) +
+        labs(y="Traits",x="Samples",fill="GIFT")
+```
+
 ```{r comumnity_elem_plot_gut, comment="", message=FALSE, warning=FALSE, fig.height=12, fig.width=10, fig.fullwidth=TRUE}
 GIFTs_elements_community %>%
     as.data.frame() %>%
@@ -160,7 +188,7 @@ GIFTs_elements_community %>%
         scale_fill_gradientn(colours=rev(c("#d53e4f", "#f46d43", "#fdae61", "#fee08b", "#e6f598", "#abdda4", "#ddf1da")))+
         facet_grid(functionid ~ gut_location, scales="free",space="free") +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-              axis.text.y = element_text(size=8),
+              axis.text.y = element_text(size=10),
               strip.text.y = element_text(angle = 0)
               ) +
         labs(y="Traits",x="Samples",fill="GIFT")
